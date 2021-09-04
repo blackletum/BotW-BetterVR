@@ -17,7 +17,7 @@ $eyeSeparationSetting = 0.067000
 $zoomOutLevelSetting = 1.0
 
 ; This changes how much moving your headset moves the in-game camera
-$headPositionSensitivity = 2.5
+$headPositionSensitivity = 1.0
 ; This value gets subtracted from the camera height to make the camera look smaller
 $heightPositionOffset = 0.0
 
@@ -157,3 +157,32 @@ name = Disabled (Default)
 category = Swap Sides
 default = 1
 $swappedFlipSide = 0
+
+
+# Player Size
+
+[Preset]
+name = Ant
+category = Player Size
+$headPositionSensitivity = 0.1
+
+[Preset]
+name = Half-Size
+category = Player Size
+$headPositionSensitivity = 0.5
+
+[Preset]
+name = Normal (Default)
+category = Player Size
+$headPositionSensitivity = 1.0
+
+[Preset]
+name = Big
+category = Player Size
+$headPositionSensitivity = 5.0
+
+
+[Preset]
+name = Very Much Big.. Yes Very Big
+category = Player Size
+$headPositionSensitivity = 10.0
