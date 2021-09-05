@@ -136,10 +136,10 @@ void cameraHookFrame(PPCInterpreter_t* hCPU) {
 
 	framesSinceLastCameraUpdate++;
 }
-int thing = 0;
+//long long thing = 0;                                                                                                                                        |
 void cameraHookUpdate(PPCInterpreter_t* hCPU) {
-	logPrint(std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - thing));
-	thing = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	//logPrint(std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - thing));   |  Uncomment these lines for frame time logging
+	//thing = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();                             |
 	//logPrint("Updated the camera positions");
 	hCPU->instructionPointer = hCPU->gpr[7]; // r7 will have the instruction that should be returned to
 
