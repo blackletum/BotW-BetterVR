@@ -99,7 +99,6 @@ void cameraHookInterface(PPCInterpreter_t* hCPU) {
 	ScreenId newScreenId = (ScreenId)hCPU->gpr[5];
 	switch (newScreenId) {
 		case ScreenId::MainScreen_00:
-		case ScreenId::MainShortCut_00:
 		case ScreenId::Message3D_00:
 		case ScreenId::AppHome_00:
 		case ScreenId::MainScreenMS_00:
