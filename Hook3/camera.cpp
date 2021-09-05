@@ -169,7 +169,7 @@ void cameraHookUpdate(PPCInterpreter_t* hCPU) {
 
 
 	inputData.newPosX = inputData.oldPosX + (hmdPos.x * inputData.headPositionSensitivitySetting);
-	inputData.newPosY = inputData.oldPosY + (hmdPos.y * inputData.headPositionSensitivitySetting) + (inputData.heightPositionOffsetSetting * inputData.headPositionSensitivitySetting);
+	inputData.newPosY = inputData.oldPosY + (hmdPos.y * inputData.headPositionSensitivitySetting)/* + (inputData.heightPositionOffsetSetting * inputData.headPositionSensitivitySetting)*/;
 	inputData.newPosZ = inputData.oldPosZ + (hmdPos.z * inputData.headPositionSensitivitySetting);
 
 	inputData.newTargetX = inputData.newPosX + ((combinedMatrix[2][0] * -1.0f) * originalCameraDistance);
