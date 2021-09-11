@@ -123,6 +123,10 @@ void cameraHookInterface(PPCInterpreter_t* hCPU) {
 	switch (newScreenId) {
 		case ScreenId::MainScreen_00:
 		case ScreenId::Message3D_00:
+		case ScreenId::MessageGet_00:
+		case ScreenId::GameTitle_00:
+		case ScreenId::MessageSp_00:
+		case ScreenId::MessageTips_00:
 		case ScreenId::MainScreenMS_00:
 		case ScreenId::MainDungeon_00:
 		case ScreenId::AppMenuBtn_00:
