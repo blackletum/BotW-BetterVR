@@ -25,191 +25,87 @@ $heightPositionOffset = 0.0
 # Mode selector
 
 [Preset]
-name = Third-Person (Default)
-category = Camera Mode
-default = 1
-
-[Preset]
-name = First-Person
+name = First-Person (Default)
 category = Camera Mode
 $mode:int = 1
 $linkOpacity = 0.0
 $cameraDistance = 0.01
-
-# Third Person - Camera Distance
-
-[Preset]
-name = Low
-category = Camera Distance
-condition = $mode == 0
-$cameraDistance = 0.4
-
-[Preset]
-name = Normal (Default)
-category = Camera Distance
-condition = $mode == 0
 default = 1
-$cameraDistance = 0.5
 
 [Preset]
-name = High
-category = Camera Distance
-condition = $mode == 0
-$cameraDistance = 0.675
-
-[Preset]
-name = Very High
-category = Camera Distance
-condition = $mode == 0
-$cameraDistance = 0.8
-
-[Preset]
-name = Extreme
-category = Camera Distance
-condition = $mode == 0
-$cameraDistance = 0.9
+name = Third-Person
+$mode:int = 0
+category = Camera Mode
 
 # Whether or not to allow the user to walk around
 
 [Preset]
-name = Don't Allow (Default)
-category = Allow Hmd-Based Camera Movement?
-condition = $mode == 1
+name = Allow (Default)
+category = Allow Room Scale Movement?
 default = 1
-$firstPersonCameraMovement = 0
-
-[Preset]
-name = Allow
-category = Allow Hmd-Based Camera Movement?
-condition = $mode == 1
 $firstPersonCameraMovement = 1
 
-# Field Of View
-
 [Preset]
-name = Extreme
-category = Field Of View
-$FOV = 1.97
-
-[Preset]
-name = Very High
-category = Field Of View
-$FOV = 1.1
-
-[Preset]
-name = High
-category = Field Of View
-$FOV = 0.95
-
-[Preset]
-name = Normal (Default)
-category = Field Of View
-default = 1
-$FOV = 0.872665
-
-[Preset]
-name = Low
-category = Field Of View
-$FOV = 0.75
-
-[Preset]
-name = Very Low
-category = Field Of View
-$FOV = 0.6
+name = Don't Allow
+category = Allow Room Scale Movement?
+$firstPersonCameraMovement = 0
 
 # HUD Scale
 
 [Preset]
 name = Tiny
-category = HUD Scale (hearts, minimap etc.)
+category = HUD Scale
 $hudScale = 0.3
-
-[Preset]
-name = Small (Recommended)
-category = HUD Scale (hearts, minimap etc.)
-default = 1
-$hudScale = 0.4
-
-[Preset]
-name = Medium
-category = HUD Scale (hearts, minimap etc.)
-$hudScale = 0.5
-
-[Preset]
-name = Big
-category = HUD Scale (hearts, minimap etc.)
-$hudScale = 0.6
-
-# Menu Scale
-
-[Preset]
-name = Tiny
-category = Menu Scale (inventory, map etc.)
 $menuScale = 1.2
 
 [Preset]
-name = Small
-category = Menu Scale (inventory, map etc.)
+name = Small (Recommended)
+category = HUD Scale
 default = 1
+$hudScale = 0.4
 $menuScale = 0.75
 
 [Preset]
-name = Medium (Recommended)
-category = Menu Scale (inventory, map etc.)
+name = Medium
+category = HUD Scale
+$hudScale = 0.5
 $menuScale = 0.6
 
 [Preset]
 name = Big
-category = Menu Scale (inventory, map etc.)
+category = HUD Scale
+$hudScale = 0.6
 $menuScale = 0.5
-
-[Preset]
-name = Very Big
-category = Menu Scale (inventory, map etc.)
-$menuScale = 0.25
-
-# Swap Sides
-
-[Preset]
-name = Enabled
-category = Swap Sides
-$swappedFlipSide = 1
-
-[Preset]
-name = Disabled (Default)
-category = Swap Sides
-default = 1
-$swappedFlipSide = 0
-
 
 # Player Size
 
 [Preset]
 name = Ant
-category = Player Size
+category = World Scale
 condition = $mode == 0
 $headPositionSensitivity = 0.1
 
 [Preset]
 name = Half-Size
-category = Player Size
+category = World Scale
 condition = $mode == 0
 $headPositionSensitivity = 0.5
 
 [Preset]
 name = Normal (Default)
-category = Player Size
+category = World Scale
+default = 1
 condition = $mode == 0
 $headPositionSensitivity = 1.0
 
 [Preset]
 name = Big
-category = Player Size
+category =  World Scale
 condition = $mode == 0
 $headPositionSensitivity = 5.0
 
 [Preset]
-name = Very Much Big.. Yes Very Big
-category = Player Size
+name = Very Much Big... Yes Very Big
+category =  World Scale
 condition = $mode == 0
 $headPositionSensitivity = 10.0
