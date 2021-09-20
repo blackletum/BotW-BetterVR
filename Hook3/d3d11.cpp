@@ -10,7 +10,7 @@ uint32_t hmdViewCount = 0;
 
 XrSwapchain xrSwapchainHandle = XR_NULL_HANDLE;
 DXGI_FORMAT xrSwapchainFormat;
-XrRect2Di xrSwapchainSize = { {0, 0}, {0, 0} };
+XrRect2Di xrSwapchainSize = {{0, 0}, {0, 0}};
 std::vector<XrSwapchainImageD3D11KHR> xrSwapchainImages;
 
 winrt::com_ptr<IDXGIFactory1> dxgiFactory;
@@ -112,14 +112,17 @@ constexpr char shaderHLSL[] = R"_(
 				}
 			}
 			else {
+				//samplePosition.x = samplePosition.x * 2.0 - (2.0 * 0.5) + 0.5;
+				//samplePosition = (samplePosition - 0.5) * (2.0 * (1.0+(singleScreenScale*0.5))) + 0.5;
 				samplePosition.x = input.Tex.x;
 				if (input.viewId == 0) {
-					samplePosition.x -= (eyeSeparation);
+					//samplePosition.x -= (eyeSeparation);
 				}
 				else {
-					samplePosition.x += (eyeSeparation);
+					//samplePosition.x += (eyeSeparation);
 				}
 			}
+			samplePosition = samplePosition * zoomOutLevel - (zoomOutLevel * 0.5) + 0.5;
 			if (input.viewId == 0) {
 		    	renderColor = leftTexture.Sample(textureSampler, samplePosition);
 			}
@@ -128,6 +131,9 @@ constexpr char shaderHLSL[] = R"_(
 			}
         }
 		else {
+			if (input.viewId == 1) {
+				samplePosition.x += 1.0;
+			}
 			samplePosition.x /= 2.0;
 			renderColor = leftTexture.Sample(textureSampler, samplePosition);
 		}
@@ -355,7 +361,7 @@ void dx11Initialize() {
 	logPrint("Successfully created OpenXR swapchains!");
 
 	XrReferenceSpaceCreateInfo spaceCreateInfo = { XR_TYPE_REFERENCE_SPACE_CREATE_INFO };
-	spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
+	spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
 	spaceCreateInfo.poseInReferenceSpace = xrIdentityPose;
 	checkXRResult(xrCreateReferenceSpace(xrSessionHandle, &spaceCreateInfo, &xrSpaceHandle), "Failed to create reference space!");
 	logPrint("Successfully created OpenXR reference space!");
@@ -485,6 +491,14 @@ void dx11Render() {
 			waitInfo.timeout = XR_INFINITE_DURATION;
 			checkXRResult(xrWaitSwapchainImage(xrSwapchainHandle, &waitInfo));
 
+			float leftHalfFOV = glm::degrees(leftView.fov.angleLeft);
+			float rightHalfFOV = glm::degrees(leftView.fov.angleRight);
+			float upHalfFOV = glm::degrees(leftView.fov.angleUp);
+			float downHalfFOV = glm::degrees(leftView.fov.angleDown);
+
+			float horizontalHalfFOV = (abs(leftView.fov.angleLeft) + abs(leftView.fov.angleRight)) * 0.5;
+			float verticalHalfFOV = (abs(leftView.fov.angleUp) + abs(leftView.fov.angleDown)) * 0.5;
+
 			for (uint32_t i = 0; i < hmdViewCount; i++) {
 				projectionLayerViews[i].pose = views[i].pose;
 				projectionLayerViews[i].fov = views[i].fov;
@@ -542,7 +556,7 @@ void dx11RenderLayer(ID3D11Texture2D* swapchainTargetTexture, sideTextureResourc
 	renderData.renderHeight = (float)sideTexture->height;
 	renderData.swapchainWidth = (float)xrSwapchainSize.extent.width;
 	renderData.swapchainHeight = (float)xrSwapchainSize.extent.height;
-	renderData.eyeSeparation = glm::distance(leftEyePos, rightEyePos);
+	renderData.eyeSeparation = glm::distance(leftEyePos, rightEyePos) / cameraGetZoomOutLevel();
 	renderData.showWholeScreen = !sideBySideRenderingMode;
 	renderData.showSingleScreen = (float)!cameraIsInGame();
 	renderData.singleScreenScale = cameraGetMenuZoom();

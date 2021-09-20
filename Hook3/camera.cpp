@@ -187,8 +187,8 @@ void cameraHookUpdate(PPCInterpreter_t* hCPU) {
 
 	glm::fvec3 rotatedHmdPos = glm::toMat3(combinedQuat) * eyePos;
 	
-	if (inputData.viewMode == 1)
-	{
+	if (inputData.viewMode == 1) {
+
 		inputData.newPosX = linkData.posX;
 		inputData.newPosY = linkData.posY;
 		inputData.newPosZ = linkData.posZ;

@@ -4,7 +4,7 @@ moduleMatches = 0x6267BFD0
 .origin = codecave
 
 const_AspectRatio:
-.float ((16/9)/(1/1)) ; oculus aspect ratio
+.float ((16/9)/(1/1)) ; oculus quest 2 aspect ratio
 
 const_434:
 .float -520
