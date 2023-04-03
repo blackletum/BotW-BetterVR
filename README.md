@@ -4,19 +4,24 @@ A project aimed at providing a PC VR mode for Breath of the Wild using the Wii U
 
 ### Temporary Build Instructions  
 
-1. Install VCPKG and use `vcpkg install openxr-loader:x64-windows-static-md eigen3:x64-windows-static-md glm:x64-windows-static-md`
+1. Install [vcpkg](https://github.com/microsoft/vcpkg) and use `vcpkg install openxr-loader:x64-windows-static-md eigen3:x64-windows-static-md glm:x64-windows-static-md vulkan-headers:x64-windows-static-md`
 
-2. Install the Vulkan SDK from https://vulkan.lunarg.com/sdk/home#windows
+2. Install the latest Vulkan SDK from https://vulkan.lunarg.com/sdk/home#windows and make sure that VULKAN_SDK was added to your environment variables.
 
-3. Download and setup a new Cemu installation in the Cemu folder that's included. So the Cemu folder should have the Cemu.exe directly inside of it. Step technically not required, but it makes debugging so much faster.
+3. [Optional] Download and extract a new Cemu installation to the Cemu folder that's included. Step technically not required, but it's the default install location and makes debugging much easier.
 
-4. Open .sln using Visual Studio (you need to have downloaded Desktop C++ in the Visual Studio Installer too) and right-click the BetterVR_Layer project to set it to be the startup project.
+4. Use Clion or Visual Studio to open the project. If you do use Clion (recommended), you'll still need to have Visual Studio installed to use it as the compiler.
 
-6. Copy the `graphicPacks/BreathOfTheWild_BetterVR` folder to your your Cemu's `graphicPacks` folder.  You also wanna enable this graphic pack in Cemu and make sure you're using Vulkan. This copying process might be redundant and is also done by building the project in Visual Studio.
+5. If you want to use it outside visual studio, you can go to the /[cmake-output-folder]/bin/ folder for the BetterVR_Layer.dll. The `BetterVR_Layer.json` and `Launch_BetterVR.bat` can be found in the [resources](/resources) folder. Then you can launch Cemu with the hook using the Launch_BetterVR.bat file to start Cemu with the hook.
 
-5. Each time you want to build it you just right-click the BetterVR_Layer project and press Build. If you want to the Visual Studio debugger (recommended), you can use the Local Windows Debugger button and it'll just build and launch Cemu so you don't have to copy files and such.
 
-6. If you want to use it outside of visual studio, you can go to the /BetterVR/build/[Debug or Release]/ folder and then put the `BetterVR_Layer.dll`, `BetterVR_Layer.json`, `Launch_BetterVR.bat` next to your Cemu.exe. Then you can launch Cemu with the hook using the Launch_BetterVR.bat file to start Cemu with the hook.
+### Licenses
+
+This project is licensed under the MIT license.  
+It also includes [vkroots](https://github.com/Joshua-Ashton/vkroots/blob/main/LICENSES/MIT.txt).
+
+
+---
 
 ### Remaining text have to be updated for the new project
   
@@ -70,7 +75,7 @@ You can leave the graphic pack enabled while playing in non-VR without any issue
 
 ### Building
 
-1. Make sure that you've got [vcpkg](https://github.com/microsoft/vcpkg) installed.
+1. Make sure that you've got installed.
 
 2. Install the required dependencies using `vcpkg install openxr-loader:x64-windows eigen3:x64-windows glm:x64-windows`.
 
@@ -85,15 +90,3 @@ The OpenXR application has three different modes that you can change in the `Bot
 - `APP_CALC_CONVERT` is used as an intermediary form of the library-dependent code and is able to be compiled into a graphic pack patch that works with the `GFX_PACK_PASSTHROUGH` code.
 
 - `APP_CALC_LIBRARY` will be the most useful mode for most people. It allows you to interact with the camera using the eigen and glm libraries so that it's easy to develop and experiment with.
-
-  
-
-### Licenses
-
-This project is licensed under the MIT license.
-
-  
-
-Licenses from parts of the code are:
-
-- `/OpenXR/` directory contains an application that is based on MIT licensed code from Microsoft's [OpenXR MixedReality repo](https://github.com/microsoft/OpenXR-MixedReality).
