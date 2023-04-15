@@ -95,7 +95,7 @@ void RND_Renderer::EndFrame() {
         }
 
         frameRenderLayer.layerFlags = NULL;
-        frameRenderLayer.space = VRManager::instance().XR->m_stageSpace;
+        frameRenderLayer.space = VRManager::instance().XR->m_headSpace;
         frameRenderLayer.viewCount = (uint32_t)m_frameProjectionViews.size();
         frameRenderLayer.views = m_frameProjectionViews.data();
         m_layers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&frameRenderLayer));

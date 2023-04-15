@@ -274,6 +274,7 @@ void OpenXR::ProcessEvents() {
                 break;
         }
 
+        eventData = { XR_TYPE_EVENT_DATA_BUFFER };
         result = xrPollEvent(m_instance, &eventData);
     }
 }

@@ -52,14 +52,14 @@ private:
     }
 
     template <typename T>
-    static void writeMemoryBE(uint64_t offset, T value) {
-        swapEndianness(value);
-        memcpy((void*)(s_memoryBaseAddress + offset), (void*)&value, sizeof(T));
+    static void writeMemoryBE(uint64_t offset, T* valuePtr) {
+        swapEndianness(*valuePtr);
+        memcpy((void*)(s_memoryBaseAddress + offset), (void*)valuePtr, sizeof(T));
     }
 
     template <typename T>
-    static void writeMemory(uint64_t offset, T value) {
-        memcpy((void*)(s_memoryBaseAddress + offset), (void*)&value, sizeof(T));
+    static void writeMemory(uint64_t offset, T* valuePtr) {
+        memcpy((void*)(s_memoryBaseAddress + offset), (void*)valuePtr, sizeof(T));
     }
 
     template <typename T>
