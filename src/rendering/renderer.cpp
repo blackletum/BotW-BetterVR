@@ -6,12 +6,21 @@
 RND_Renderer::RND_Renderer(XrSession xrSession): m_session(xrSession) {
     XrSessionBeginInfo m_sessionCreateInfo = { XR_TYPE_SESSION_BEGIN_INFO };
     m_sessionCreateInfo.primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-    checkXRResult(xrBeginSession(VRManager::instance().XR->GetSession(), &m_sessionCreateInfo), "Failed to begin OpenXR session!");
+    checkXRResult(xrBeginSession(m_session, &m_sessionCreateInfo), "Failed to begin OpenXR session!");
 }
 
 RND_Renderer::~RND_Renderer() {
-    checkXRResult(xrEndSession(VRManager::instance().XR->GetSession()), "Failed to end OpenXR session!");
+    StopRendering();
 }
+
+void RND_Renderer::StopRendering() {
+    xrRequestExitSession(m_session);
+    if (m_session != XR_NULL_HANDLE) {
+        checkXRResult(xrEndSession(m_session), "Failed to end OpenXR session!");
+        m_session = XR_NULL_HANDLE;
+    }
+}
+
 
 void RND_Renderer::StartFrame() {
     XrFrameWaitInfo waitFrameInfo = { XR_TYPE_FRAME_WAIT_INFO };
@@ -30,23 +39,27 @@ void RND_Renderer::StartFrame() {
 
     if (m_layer3D.GetStatus() != Layer::Status::PREPARING)
         m_layer3D.PrepareRendering();
-    if (m_layerHUD.GetStatus() != Layer::Status::PREPARING)
-        m_layerHUD.PrepareRendering();
-    if (m_layerInventory.GetStatus() != Layer::Status::PREPARING)
-        m_layerInventory.PrepareRendering();
+    if (m_layer2D.GetStatus() != Layer::Status::PREPARING)
+        m_layer2D.PrepareRendering();
 }
 
 void RND_Renderer::EndFrame() {
     if (m_layer3D.GetStatus() == Layer::Status::BINDING)
         m_layer3D.StartRendering();
-    if (m_layerHUD.GetStatus() == Layer::Status::BINDING)
-        m_layerHUD.StartRendering();
-    if (m_layerInventory.GetStatus() == Layer::Status::BINDING)
-        m_layerInventory.StartRendering();
+    if (m_layer2D.GetStatus() == Layer::Status::BINDING)
+        m_layer2D.StartRendering();
 
     std::vector<XrCompositionLayerBaseHeader*> compositionLayers;
 
     XrCompositionLayerProjection layer3D = { XR_TYPE_COMPOSITION_LAYER_PROJECTION };
+
+    XrCompositionLayerQuad layer2D = { XR_TYPE_COMPOSITION_LAYER_QUAD };
+    if (m_frameState.shouldRender && m_layer2D.GetStatus() == Layer::Status::RENDERING) {
+        m_layer2D.Render();
+        layer2D = m_layer2D.FinishRendering();
+        compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer2D));
+    }
+
     std::array<XrCompositionLayerProjectionView, 2> layer3DViews = { XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW };
     if (m_frameState.shouldRender && m_layer3D.GetStatus() == Layer::Status::RENDERING) {
         m_layer3D.Render(OpenXR::EyeSide::LEFT);
@@ -57,20 +70,6 @@ void RND_Renderer::EndFrame() {
         layer3D.viewCount = (uint32_t)layer3DViews.size();
         layer3D.views = layer3DViews.data();
         compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer3D));
-    }
-
-    XrCompositionLayerQuad layerHUD = { XR_TYPE_COMPOSITION_LAYER_QUAD };
-    if (m_frameState.shouldRender && m_layerHUD.GetStatus() == Layer::Status::RENDERING) {
-        m_layerHUD.Render();
-        layerHUD = m_layerHUD.FinishRendering();
-        compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layerHUD));
-    }
-
-    XrCompositionLayerQuad layerInventory = { XR_TYPE_COMPOSITION_LAYER_QUAD };
-    if (m_frameState.shouldRender && m_layerInventory.GetStatus() == Layer::Status::RENDERING) {
-        m_layerInventory.Render();
-        layerInventory = m_layerInventory.FinishRendering();
-        compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layerInventory));
     }
 
     XrFrameEndInfo frameEndInfo = { XR_TYPE_FRAME_END_INFO };
@@ -254,7 +253,7 @@ void RND_Renderer::Layer2D::StartRendering() {
     checkAssert(m_status == Status::BINDING, "Haven't attached any textures to the layer yet so there's nothing to start rendering");
     m_status = Status::RENDERING;
 
-    checkAssert(this->m_texture == nullptr, "Shouldn't start rendering when there's no texture to render to this layer!");
+    checkAssert(this->m_texture != nullptr, "Shouldn't start rendering when there's no texture to render to this layer!");
 
     this->m_swapchain->StartRendering();
 }
@@ -277,18 +276,27 @@ void RND_Renderer::Layer2D::Render() {
     });
 }
 
+constexpr float QUAD_SIZE = 1.0f;
 XrCompositionLayerQuad RND_Renderer::Layer2D::FinishRendering() {
     checkAssert(m_status == Status::RENDERING, "Should have rendered before ending it");
     m_status = Status::NOT_RENDERING;
 
     this->m_swapchain->FinishRendering();
 
-    XrView leftView = VRManager::instance().XR->GetPredictedView(OpenXR::EyeSide::LEFT);
-    XrView rightView = VRManager::instance().XR->GetPredictedView(OpenXR::EyeSide::RIGHT);
+    XrSpaceLocation spaceLocation = { XR_TYPE_SPACE_LOCATION };
+    xrLocateSpace(VRManager::instance().XR->m_headSpace, VRManager::instance().XR->m_stageSpace, VRManager::instance().XR->GetRenderer()->m_frameState.predictedDisplayTime, &spaceLocation);
+
+    spaceLocation.pose.position.z -= 2.0f;
+    spaceLocation.pose.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+    float aspectRatio = (float)this->m_texture->d3d12GetTexture()->GetDesc().Width / (float)this->m_texture->d3d12GetTexture()->GetDesc().Height;
+
+    float width = aspectRatio > 1.0f ? aspectRatio : 1.0f;
+    float height = aspectRatio <= 1.0f ? 1.0f / aspectRatio : 1.0f;
 
     return {
         .type = XR_TYPE_COMPOSITION_LAYER_QUAD,
-        .layerFlags = NULL,
+        .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT,
         .space = VRManager::instance().XR->m_stageSpace,
         .eyeVisibility = XR_EYE_VISIBILITY_BOTH,
         .subImage = {
@@ -301,10 +309,7 @@ XrCompositionLayerQuad RND_Renderer::Layer2D::FinishRendering() {
                 }
             }
         },
-        .pose = {
-            .orientation = { 0, 0, 0, 1 },
-            .position = { 0, 0, 0 }
-        },
-        .size = { 1, 1 }
+        .pose = spaceLocation.pose,
+        .size = { width*QUAD_SIZE, height*QUAD_SIZE }
     };
 }

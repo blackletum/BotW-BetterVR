@@ -3,9 +3,10 @@
 #include "layer.h"
 #include "utils/d3d12_utils.h"
 
-std::array<CaptureTexture, 2> captureTextures = {
+std::array<CaptureTexture, 3> captureTextures = {
     CaptureTexture{ false, { 0, 0 }, VK_NULL_HANDLE, VK_FORMAT_B10G11R11_UFLOAT_PACK32, { 1280, 720 }, OpenXR::EyeSide::LEFT, { nullptr, nullptr }, VK_NULL_HANDLE },
-    CaptureTexture{ false, { 0, 0 }, VK_NULL_HANDLE, VK_FORMAT_D32_SFLOAT, { 1280, 720 }, OpenXR::EyeSide::LEFT, { nullptr, nullptr }, VK_NULL_HANDLE }
+    CaptureTexture{ false, { 0, 0 }, VK_NULL_HANDLE, VK_FORMAT_D32_SFLOAT, { 1280, 720 }, OpenXR::EyeSide::LEFT, { nullptr, nullptr }, VK_NULL_HANDLE },
+    CaptureTexture{ false, { 0, 0 }, VK_NULL_HANDLE, VK_FORMAT_A2B10G10R10_UNORM_PACK32, { 1280, 720 }, OpenXR::EyeSide::LEFT, { nullptr, nullptr }, VK_NULL_HANDLE }
 };
 std::atomic_size_t foundResolutions = captureTextures.size();
 
@@ -42,7 +43,17 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
         const long captureIdx = std::lroundf(pColor->float32[0]*32.0f);
         auto& capture = captureTextures[captureIdx];
 
+        // this is a hack since the game clears the 2D layer twice, and we want to only capture the first one
+        if (capture.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 && VRManager::instance().XR->GetRenderer()->m_layer2D.GetStatus() == RND_Renderer::Layer::Status::BINDING) {
+            // clear it to black for a better visualization since Cemu's output is only the HUD at this point
+            const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+        }
+
+        // this is a hack since the game will eventually overlap multiple textures on top of
         if (capture.initialized && capture.foundImage != image) {
+            // clear the image to be transparent to allow for the HUD to be rendered on top of it which results in a transparent HUD layer
+            const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
             return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
         }
 
@@ -52,6 +63,7 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
         if (!capture.initialized) {
             lockImageResolutions.lock();
 
+            Log::print("Initializing texture with {}", (void*)image);
             auto it = imageResolutions.find(image);
             checkAssert(it != imageResolutions.end(), "Couldn't find the resolution for an image. Is the graphic pack not active?");
 
@@ -67,7 +79,8 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
             capture.sharedTextures[OpenXR::EyeSide::RIGHT] = std::make_unique<SharedTexture>(capture.foundSize.width, capture.foundSize.height, capture.format, D3D12Utils::ToDXGIFormat(capture.format));
             capture.sharedTextures[OpenXR::EyeSide::LEFT]->d3d12GetTexture()->SetName(std::format(L"CaptureTexture #{} - Left", captureIdx).c_str());
             capture.sharedTextures[OpenXR::EyeSide::RIGHT]->d3d12GetTexture()->SetName(std::format(L"captureTexture #{} - Right", captureIdx).c_str());
-            imageResolutions.erase(it);
+            // note: The VkImage for both the 3D and 2D layer are the same so don't remove it from the pool of possible capture resolutions
+            //imageResolutions.erase(it);
             foundResolutions--;
             Log::print("Found capture texture {}: res={}x{}, format={}", captureIdx, capture.foundSize.width, capture.foundSize.height, capture.format);
 
@@ -93,8 +106,21 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
         capture.foundImage = image;
         capture.sharedTextures[capture.eyeSide]->CopyFromVkImage(commandBuffer, image);
         capture.captureCmdBuffer = commandBuffer;
-        VRManager::instance().XR->GetRenderer()->m_layer3D.AddTexture(OpenXR::EyeSide::LEFT, capture.sharedTextures[OpenXR::EyeSide::LEFT].get());
-        VRManager::instance().XR->GetRenderer()->m_layer3D.AddTexture(OpenXR::EyeSide::RIGHT, capture.sharedTextures[OpenXR::EyeSide::RIGHT].get());
+        if (capture.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) {
+            VRManager::instance().XR->GetRenderer()->m_layer2D.AddTexture(capture.sharedTextures[OpenXR::EyeSide::LEFT].get());
+
+            // clear it to black for a better visualization since the main framebuffer is only the HUD at this point
+            const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+        }
+        else {
+            VRManager::instance().XR->GetRenderer()->m_layer3D.AddTexture(OpenXR::EyeSide::LEFT, capture.sharedTextures[OpenXR::EyeSide::LEFT].get());
+            VRManager::instance().XR->GetRenderer()->m_layer3D.AddTexture(OpenXR::EyeSide::RIGHT, capture.sharedTextures[OpenXR::EyeSide::RIGHT].get());
+
+            // clear the image to be transparent to allow for the HUD to be rendered on top of it which results in a transparent HUD layer
+            const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+        }
         capture.eyeSide = capture.eyeSide == OpenXR::EyeSide::LEFT ? OpenXR::EyeSide::RIGHT : OpenXR::EyeSide::LEFT;
         return;
     }

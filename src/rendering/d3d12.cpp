@@ -74,8 +74,8 @@ RND_D3D12::~RND_D3D12() {
 template <bool depth>
 RND_D3D12::PresentPipeline<depth>::PresentPipeline(RND_Renderer* pRenderer) {
     // This needs to know the format of the swapchain images, thus needs to wait until the swapchain images are created
-    m_vertexShader = D3D12Utils::CompileShader(presentHLSL, "VSMain", "vs_5_1");
-    m_pixelShader = D3D12Utils::CompileShader(presentHLSL, "PSMain", "ps_5_1");
+    m_vertexShader = D3D12Utils::CompileShader(depth ? presentDepthHLSL : presentHLSL, "VSMain", "vs_5_1");
+    m_pixelShader = D3D12Utils::CompileShader(depth ? presentDepthHLSL : presentHLSL, "PSMain", "ps_5_1");
 
     auto createSignature = [this]() {
         // clang-format off
@@ -92,20 +92,20 @@ RND_D3D12::PresentPipeline<depth>::PresentPipeline(RND_Renderer* pRenderer) {
 
         D3D12_ROOT_PARAMETER rootParams[] = {
             {
-                .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-                .DescriptorTable = {
-                    .NumDescriptorRanges = (UINT)std::size(pixelRange),
-                    .pDescriptorRanges = pixelRange
+                D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+                {
+                    (UINT)std::size(pixelRange),
+                    pixelRange,
                 },
-                .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+                D3D12_SHADER_VISIBILITY_PIXEL
             },
             {
-                .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
-                .Descriptor = {
-                    .ShaderRegister = 1,
-                    .RegisterSpace = 0
+                D3D12_ROOT_PARAMETER_TYPE_CBV,
+                {
+                    1,
+                    0
                 },
-                .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
+                D3D12_SHADER_VISIBILITY_ALL
             }
         };
         // clang-format on
@@ -147,7 +147,9 @@ RND_D3D12::PresentPipeline<depth>::PresentPipeline(RND_Renderer* pRenderer) {
 
     m_attachmentHeap = D3D12Utils::CreateDescriptorHeap(VRManager::instance().D3D12->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true, (UINT)m_attachmentHandles.size());
     m_targetHeap = D3D12Utils::CreateDescriptorHeap(VRManager::instance().D3D12->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, false, (UINT)m_targetHandles.size());
-    m_depthHeap = D3D12Utils::CreateDescriptorHeap(VRManager::instance().D3D12->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, false, (UINT)m_depthTargetHandles.size());
+    if constexpr (depth) {
+        m_depthHeap = D3D12Utils::CreateDescriptorHeap(VRManager::instance().D3D12->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, false, (UINT)m_depthTargetHandles.size());
+    }
 
     for (uint32_t i = 0; i < m_attachmentHandles.size(); i++) {
         m_attachmentHandles[i] = m_attachmentHeap->GetCPUDescriptorHandleForHeapStart();
@@ -312,7 +314,7 @@ void RND_D3D12::PresentPipeline<depth>::RecreatePipeline() {
     };
     // clang-format off
     psoDesc.DepthStencilState = {
-        .DepthEnable = true,
+        .DepthEnable = depth,
         .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL,
         .DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS,
         .StencilEnable = false,

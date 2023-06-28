@@ -8,17 +8,10 @@ class RND_Renderer {
 public:
     explicit RND_Renderer(XrSession xrSession);
     ~RND_Renderer();
+    void StopRendering();
 
     void StartFrame();
     void EndFrame();
-
-protected:
-    XrSession m_session;
-
-    enum class LayerType : uint8_t {
-        LAYER_3D = 0,
-        LAYER_2D = 1,
-    };
 
     class Layer {
     public:
@@ -38,6 +31,10 @@ protected:
     protected:
         Status m_status = Status::NOT_RENDERING;
     };
+
+protected:
+    XrSession m_session;
+    XrFrameState m_frameState = { XR_TYPE_FRAME_STATE };
 
     class Layer3D : public Layer {
     public:
@@ -101,9 +98,5 @@ protected:
 
 public:
     Layer3D m_layer3D;
-    Layer2D m_layerHUD;
-    Layer2D m_layerInventory;
-
-protected:
-    XrFrameState m_frameState = { XR_TYPE_FRAME_STATE };
+    Layer2D m_layer2D;
 };

@@ -41,7 +41,7 @@ private:
     std::unique_ptr<RND_Renderer> m_renderer;
 
     std::array<XrTime, 2> m_frameTimes = { 0, 0 };
-    std::array<XrView, 2> m_updatedViews;
+    std::array<XrView, 2> m_updatedViews = {};
 
     XrDebugUtilsMessengerEXT m_debugMessengerHandle = XR_NULL_HANDLE;
 

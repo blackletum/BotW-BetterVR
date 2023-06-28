@@ -15,5 +15,3 @@ struct CaptureTexture {
     // current frame state
     VkCommandBuffer captureCmdBuffer = VK_NULL_HANDLE;
 };
-
-extern std::array<CaptureTexture, 2> captureTextures;

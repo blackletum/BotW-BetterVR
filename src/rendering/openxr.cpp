@@ -115,6 +115,8 @@ OpenXR::OpenXR() {
 }
 
 OpenXR::~OpenXR() {
+    this->m_renderer.reset();
+
     if (m_headSpace != XR_NULL_HANDLE) {
         xrDestroySpace(m_headSpace);
     }
@@ -238,7 +240,8 @@ void OpenXR::ProcessEvents() {
                 break;
             case XR_SESSION_STATE_STOPPING:
                 Log::print("OpenXR has indicated that the session should be ended!");
-                checkXRResult(xrEndSession(m_session), "Failed to end OpenXR session!");
+                this->m_renderer->StopRendering();
+                m_session = XR_NULL_HANDLE;
                 break;
             case XR_SESSION_STATE_EXITING:
                 Log::print("OpenXR has indicated that the session should be destroyed! todo: Close Cemu maybe?");

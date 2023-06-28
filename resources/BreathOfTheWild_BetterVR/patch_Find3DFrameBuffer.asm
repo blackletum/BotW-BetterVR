@@ -3,14 +3,13 @@ moduleMatches = 0x6267BFD0
 
 .origin = codecave
 
-
-magicColorValue:
+magic3DColorValue:
 .float (0.0 / 32.0)
 .float 0.123456789
 .float 0.987654321
 .float 1.0
 
-clearColorBuffer:
+clear3DColorBuffer:
 mflr r6
 stwu r1, -0x20(r1)
 stw r6, 0x24(r1)
@@ -21,22 +20,22 @@ stfs f3, 0x18(r1)
 stfs f4, 0x14(r1)
 stw r3, 0x10(r1)
 
-lis r3, magicColorValue@ha
-lfs f1, magicColorValue@l+0x0(r3)
-lfs f2, magicColorValue@l+0x4(r3)
-lfs f3, magicColorValue@l+0x8(r3)
-lfs f4, magicColorValue@l+0xC(r3)
+lis r3, magic3DColorValue@ha
+lfs f1, magic3DColorValue@l+0x0(r3)
+lfs f2, magic3DColorValue@l+0x4(r3)
+lfs f3, magic3DColorValue@l+0x8(r3)
+lfs f4, magic3DColorValue@l+0xC(r3)
 
 mr r3, r26
 addi r3, r3, 0x1C ; r3 is now the agl::RenderBuffer::mColorBuffer array
 lwz r3, 0(r3) ; r3 is now the agl::RenderBuffer::mColorBuffer[0] object
 cmpwi r3, 0
-beq skipClearingColorBuffer
+beq skipClearing3DColorBuffer
 addi r3, r3, 0xBC ; r3 is now the agl::RenderBuffer::mColorBuffer[0]::mGX2FrameBuffer object
 
 bl import.gx2.GX2ClearColor
 
-skipClearingColorBuffer:
+skipClearing3DColorBuffer:
 lfs f1, 0x20(r1)
 lfs f2, 0x1C(r1)
 lfs f3, 0x18(r1)
@@ -49,10 +48,10 @@ addi r1, r1, 0x20
 blr
 
 
-magicDepthValue:
+magic3DDepthValue:
 .float 0.0123456789
 
-clearDepthBuffer:
+clear3DDepthBuffer:
 mflr r3
 stwu r1, -0x20(r1)
 stw r3, 0x24(r1)
@@ -62,8 +61,8 @@ stw r3, 0x10(r1)
 stw r4, 0x14(r1)
 stw r5, 0x18(r1)
 
-lis r3, magicDepthValue@ha
-lfs f1, magicDepthValue@l+0x0(r3)
+lis r3, magic3DDepthValue@ha
+lfs f1, magic3DDepthValue@l+0x0(r3)
 li r4, 1
 li r5, 3
 
@@ -71,12 +70,12 @@ mr r3, r26
 addi r3, r3, 0x3C ; r3 is now the agl::RenderBuffer::mDepthTarget array
 lwz r3, 0(r3) ; r3 is now the agl::RenderBuffer::mDepthTarget object
 cmpwi r3, 0
-beq skipClearingDepthBuffer
+beq skipClearing3DDepthBuffer
 addi r3, r3, 0xBC ; r3 is now the agl::RenderBuffer::mDepthTarget::mGX2FrameBuffer object
 
 bl import.gx2.GX2ClearDepthStencilEx
 
-skipClearingDepthBuffer:
+skipClearing3DDepthBuffer:
 lfs f1, 0x20(r1)
 lwz r3, 0x10(r1)
 lwz r4, 0x14(r1)
@@ -94,8 +93,8 @@ mflr r3
 stwu r1, -0x4(r1)
 stw r3, 0x8(r1)
 
-bla clearColorBuffer
-bla clearDepthBuffer
+bla clear3DColorBuffer
+bla clear3DDepthBuffer
 
 lwz r3, 0x8(r1)
 mtlr r3
