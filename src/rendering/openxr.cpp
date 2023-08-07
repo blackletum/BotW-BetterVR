@@ -215,7 +215,6 @@ void OpenXR::ProcessEvents() {
                 }
                 else {
                     m_renderer = std::make_unique<RND_Renderer>(m_session);
-                    m_renderer->StartFrame();
                 }
                 break;
             }
@@ -261,7 +260,7 @@ void OpenXR::ProcessEvents() {
                 Log::print("OpenXR has indicated that events are being lost!");
                 break;
             default:
-                Log::print("OpenXR has indicated that an unknown event has occurred!");
+                Log::print("OpenXR has indicated that an unknown event with type {} has occurred!", std::to_underlying(eventData.type));
                 break;
         }
 

@@ -18,7 +18,6 @@ stw r0, 0x1C(r1)
 addi r11, r1, 0x04
 bl import.coreinit.hook_UpdateCameraOffset
 
-
 lwz r11, 0xCD4(r29)
 lfs f10, FOVY_STACK_OFFSET(r1)
 stfs f10, 0x68(r11)

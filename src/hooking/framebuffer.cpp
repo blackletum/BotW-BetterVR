@@ -3,24 +3,26 @@
 #include "layer.h"
 #include "utils/d3d12_utils.h"
 
-std::array<CaptureTexture, 3> captureTextures = {
-    CaptureTexture{ false, { 0, 0 }, VK_NULL_HANDLE, VK_FORMAT_B10G11R11_UFLOAT_PACK32, { 1280, 720 }, { nullptr, nullptr }, { false, false }, VK_NULL_HANDLE },
-    CaptureTexture{ false, { 0, 0 }, VK_NULL_HANDLE, VK_FORMAT_D32_SFLOAT, { 1280, 720 }, { nullptr, nullptr }, { false, false }, VK_NULL_HANDLE },
-    CaptureTexture{ false, { 0, 0 }, VK_NULL_HANDLE, VK_FORMAT_A2B10G10R10_UNORM_PACK32, { 1280, 720 }, { nullptr, nullptr }, { false, false }, VK_NULL_HANDLE }
-};
-std::atomic_size_t foundResolutions = captureTextures.size();
+
+std::atomic_size_t foundResolutions = 2;
 
 std::mutex lockImageResolutions;
 std::unordered_map<VkImage, std::pair<VkExtent2D, VkFormat>> imageResolutions;
 
+std::vector<std::pair<VkCommandBuffer, SharedTexture*>> s_activeCopyOperations;
+
 using namespace VRLayer;
+using Status3D = RND_Renderer::Layer3D::Status3D;
+using Status2D = RND_Renderer::Layer2D::Status2D;
+
 
 VkResult VkDeviceOverrides::CreateImage(const vkroots::VkDeviceDispatch* pDispatch, VkDevice device, const VkImageCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkImage* pImage) {
     VkResult res = pDispatch->CreateImage(device, pCreateInfo, pAllocator, pImage);
 
     //static uint32_t lowestFoundWidth = std::min_element(captureTextures.begin(), captureTextures.end(), [](const CaptureTexture& a, const CaptureTexture& b){ return a.foundSize.width < b.foundSize.width; })->foundSize.width;
-    if (foundResolutions > 0 && pCreateInfo->extent.width >= 1280 && pCreateInfo->extent.height >= 720) {
+    if (pCreateInfo->extent.width >= 1280 && pCreateInfo->extent.height >= 720 && foundResolutions > 0) {
         lockImageResolutions.lock();
+        //Log::print("Added texture {}: {}x{} @ {}", (void*)*pImage, pCreateInfo->extent.width, pCreateInfo->extent.height, pCreateInfo->format);
         checkAssert(imageResolutions.try_emplace(*pImage, std::make_pair(VkExtent2D{ pCreateInfo->extent.width, pCreateInfo->extent.height }, pCreateInfo->format)).second, "Couldn't insert image resolution into map!");
         lockImageResolutions.unlock();
     }
@@ -31,100 +33,96 @@ void VkDeviceOverrides::DestroyImage(const vkroots::VkDeviceDispatch* pDispatch,
     pDispatch->DestroyImage(device, image, pAllocator);
     if (foundResolutions > 0) {
         lockImageResolutions.lock();
-        imageResolutions.erase(image);
+        if (imageResolutions.erase(image)) {
+            //Log::print("Removed texture {}", (void*)image);
+        }
         lockImageResolutions.unlock();
     }
 }
 
-
+VkImage first3DColorImage = VK_NULL_HANDLE;
 void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDispatch, VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout, const VkClearColorValue* pColor, uint32_t rangeCount, const VkImageSubresourceRange* pRanges) {
     // check for magical clear values
     if (pColor->float32[1] >= 0.12 && pColor->float32[1] <= 0.13 && pColor->float32[2] >= 0.97 && pColor->float32[2] <= 0.99) {
         // r value in magical clear value is the capture idx after rounding down
         const long captureIdx = std::lroundf(pColor->float32[0] * 32.0f);
-        auto& capture = captureTextures[captureIdx];
+        checkAssert(captureIdx == 0 || captureIdx == 2, "Invalid capture index!");
 
-        // this is a hack since the game clears the 2D layer twice, and we want to only capture the first one
-        if (capture.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 && VRManager::instance().XR->GetRenderer()->m_layer2D.GetStatus() == RND_Renderer::Layer::Status::BINDING) {
-            // clear it to black for a better visualization since Cemu's output is only the HUD at this point
-            const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
-        }
+        auto& layer3D = VRManager::instance().XR->GetRenderer()->m_layer3D;
+        auto& layer2D = VRManager::instance().XR->GetRenderer()->m_layer2D;
 
-        // this is a hack since the game will eventually overlap multiple textures on top of
-        if (capture.initialized && capture.foundImage != image) {
-            // clear the image to be transparent to allow for the HUD to be rendered on top of it which results in a transparent HUD layer
-            const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
-        }
-
-        checkAssert(capture.captureCmdBuffer == VK_NULL_HANDLE, "This texture already got captured in a previous command buffer, but never got submitted!");
-
-        // initialize textures if not already done
-        if (!capture.initialized) {
-            lockImageResolutions.lock();
-
-            auto it = imageResolutions.find(image);
-            checkAssert(it != imageResolutions.end(), "Couldn't find the resolution for an image. Is the graphic pack not active?");
-
-            if (capture.format != it->second.second) {
+        // initialize the textures of both 2D and 3D layer if either is found since they share the same VkImage and resolution
+        if (captureIdx == 0 || captureIdx == 2) {
+            if (layer2D.GetStatus() == Status2D::UNINITIALIZED && layer3D.GetStatus() == Status3D::UNINITIALIZED) {
+                lockImageResolutions.lock();
+                auto it = imageResolutions.find(image);
+                if (it != imageResolutions.end()) {
+                    layer3D.InitTextures(it->second.first);
+                    layer2D.InitTextures(it->second.first);
+                    Log::print("Found rendering resolution {}x{} @ {} using capture #{}", it->second.first.width, it->second.first.height, it->second.second, captureIdx);
+                    VRManager::instance().XR->GetRenderer()->StartFrame();
+                }
+                else {
+                    checkAssert(false, "Couldn't find image resolution in map!");
+                }
                 lockImageResolutions.unlock();
+            }
+        }
+
+        if (captureIdx == 0) {
+            // 3D layer - color texture for 3D rendering
+            // todo: Fix code for when color buffer is recreated/changed for some menus (e.g. map screen)
+
+            if (first3DColorImage == VK_NULL_HANDLE) {
+                lockImageResolutions.lock();
+                auto it = imageResolutions.find(image);
+                if (it != imageResolutions.end()) {
+                    if (it->second.second == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
+                        first3DColorImage = it->first;
+                    }
+                }
+                lockImageResolutions.unlock();
+            }
+
+            if (image != first3DColorImage) {
+                const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
                 return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
             }
-            capture.initialized = true;
-            capture.foundSize = it->second.first;
-            checkAssert(capture.format == it->second.second, std::format("Got {} as VkFormat instead of the expected {}", it->second.second, capture.format).c_str());
 
-            capture.sharedTextures[OpenXR::EyeSide::LEFT] = std::make_unique<SharedTexture>(capture.foundSize.width, capture.foundSize.height, capture.format, D3D12Utils::ToDXGIFormat(capture.format));
-            capture.sharedTextures[OpenXR::EyeSide::RIGHT] = std::make_unique<SharedTexture>(capture.foundSize.width, capture.foundSize.height, capture.format, D3D12Utils::ToDXGIFormat(capture.format));
-            capture.sharedTextures[OpenXR::EyeSide::LEFT]->d3d12GetTexture()->SetName(std::format(L"CaptureTexture #{} - Left", captureIdx).c_str());
-            capture.sharedTextures[OpenXR::EyeSide::RIGHT]->d3d12GetTexture()->SetName(std::format(L"captureTexture #{} - Right", captureIdx).c_str());
-            // note: The VkImage for both the 3D and 2D layer are the same so don't remove it from the pool of possible capture resolutions
-            //imageResolutions.erase(it);
-            foundResolutions--;
-            Log::print("Found capture texture {}: res={}x{}, format={}", captureIdx, capture.foundSize.width, capture.foundSize.height, capture.format);
-
-            ComPtr<ID3D12CommandAllocator> cmdAllocator;
-            {
-                ID3D12Device* d3d12Device = VRManager::instance().D3D12->GetDevice();
-                ID3D12CommandQueue* d3d12Queue = VRManager::instance().D3D12->GetCommandQueue();
-                d3d12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&cmdAllocator));
-                auto& sharedTextures = capture.sharedTextures;
-
-                RND_D3D12::CommandContext<true> transitionInitialTextures(d3d12Device, d3d12Queue, cmdAllocator.Get(), [&sharedTextures, captureIdx](RND_D3D12::CommandContext<true>* context) {
-                    context->GetRecordList()->SetName(L"transitionInitialTextures");
-                    sharedTextures[OpenXR::EyeSide::LEFT]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COPY_DEST);
-                    sharedTextures[OpenXR::EyeSide::RIGHT]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COPY_DEST);
-                    context->Signal(sharedTextures[OpenXR::EyeSide::LEFT].get(), 0);
-                    context->Signal(sharedTextures[OpenXR::EyeSide::RIGHT].get(), 0);
-                });
+            if (layer3D.GetStatus() == Status3D::LEFT_BINDING_COLOR || layer3D.GetStatus() == Status3D::RIGHT_BINDING_COLOR) {
+                const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
             }
 
-            lockImageResolutions.unlock();
-        }
+            if (layer3D.GetStatus() == Status3D::LEFT_BINDING_DEPTH || layer3D.GetStatus() == Status3D::RIGHT_BINDING_DEPTH) {
+                // seems to always be the case whenever closing the (inventory) menu
+                Log::print("A color texture is already bound for the current frame!");
+                return;
+            }
 
-        capture.foundImage = image;
-        capture.captureCmdBuffer = commandBuffer;
-
-        if (capture.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) {
-            capture.isCapturingSharedTextures[VRManager::instance().XR->GetRenderer()->m_layer2D.GetCurrentSide()] = true;
-            capture.sharedTextures[VRManager::instance().XR->GetRenderer()->m_layer2D.GetCurrentSide()]->CopyFromVkImage(commandBuffer, image);
-            VRManager::instance().XR->GetRenderer()->m_layer2D.AddTexture(VRManager::instance().XR->GetRenderer()->m_layer2D.GetCurrentSide(), capture.sharedTextures[VRManager::instance().XR->GetRenderer()->m_layer2D.GetCurrentSide()].get());
-            VRManager::instance().XR->GetRenderer()->m_layer2D.FlipSide();
-
-            const_cast<VkClearColorValue*>(pColor)[0] = { 1.0f, 1.0f, 1.0f, 1.0f };
-            pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
-        }
-        else {
-            capture.isCapturingSharedTextures[VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide()] = true;
-            Log::print("[{}] Capturing texture {}", VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide() == OpenXR::EyeSide::LEFT ? "left" : "right", captureIdx);
-            capture.sharedTextures[VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide()]->CopyFromVkImage(commandBuffer, image);
-            VRManager::instance().XR->GetRenderer()->m_layer3D.AddTexture(VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide(), capture.sharedTextures[VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide()].get());
-            // delay flipping until depth buffer is also captured
+            SharedTexture* texture = layer3D.CopyColorToLayer(commandBuffer, image);
+            s_activeCopyOperations.emplace_back(commandBuffer, texture);
 
             // clear the image to be transparent to allow for the HUD to be rendered on top of it which results in a transparent HUD layer
             const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+            return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+        }
+        else if (captureIdx == 2) {
+            // 2D layer - color texture for HUD rendering
+
+            // skip second attempt at capturing when GX2ClearColor is called for this image since it'll try to clear the 2D layer twice
+            // note: this will ALSO skip each second frame the HUD gets rendered while waiting for the right-side of the 3D layer to render (since we can't ONLY update the 2D layer while presenting the old HUD)
+            if (layer2D.GetStatus() == RND_Renderer::Layer2D::Status2D::BINDING_COLOR) {
+                // clear it to black for a better visualization since Cemu's output is only the HUD at this point
+                const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+            }
+
+            SharedTexture* texture = layer2D.CopyColorToLayer(commandBuffer, image);
+            s_activeCopyOperations.emplace_back(commandBuffer, texture);
+
+            const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
         }
         return;
     }
@@ -133,68 +131,47 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
     }
 }
 
+VkImage first3DDepthImage = VK_NULL_HANDLE;
 void VRLayer::VkDeviceOverrides::CmdClearDepthStencilImage(const vkroots::VkDeviceDispatch* pDispatch, VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout, const VkClearDepthStencilValue* pDepthStencil, uint32_t rangeCount, const VkImageSubresourceRange* pRanges) {
     // check for magical clear values
     if (rangeCount == 1 && pDepthStencil->depth >= 0.011456789 && pDepthStencil->depth <= 0.013456789) {
         // stencil value is the capture idx
         const uint32_t captureIdx = pDepthStencil->stencil;
-        auto& capture = captureTextures[captureIdx];
+        checkAssert(captureIdx == 1, "Invalid capture index!");
 
-        if (capture.initialized && capture.foundImage != image) {
-            return pDispatch->CmdClearDepthStencilImage(commandBuffer, image, imageLayout, pDepthStencil, rangeCount, pRanges);
-        }
+        auto& layer3D = VRManager::instance().XR->GetRenderer()->m_layer3D;
+        auto& layer2D = VRManager::instance().XR->GetRenderer()->m_layer2D;
 
-        checkAssert(capture.captureCmdBuffer == VK_NULL_HANDLE, "This texture already got captured in a previous command buffer, but never got submitted!");
+        if (captureIdx == 1) {
+            // 3D layer - depth texture for 3D rendering
+            // todo: Fix code for when depth buffer is recreated/changed for some menus (e.g. map screen)
 
-        // initialize textures if not already done
-        if (!capture.initialized) {
-            lockImageResolutions.lock();
-
-            auto it = imageResolutions.find(image);
-            if (it == imageResolutions.end()) {
+            if (first3DDepthImage == VK_NULL_HANDLE) {
+                lockImageResolutions.lock();
+                if (auto it = imageResolutions.find(image); it != imageResolutions.end()) {
+                    if (it->second.second == VK_FORMAT_D32_SFLOAT) {
+                        first3DDepthImage = it->first;
+                    }
+                }
                 lockImageResolutions.unlock();
-                return pDispatch->CmdClearDepthStencilImage(commandBuffer, image, imageLayout, pDepthStencil, rangeCount, pRanges);
-            }
-            checkAssert(it != imageResolutions.end(), "Couldn't find the resolution for an image. Is the graphic pack not active?");
-
-            capture.initialized = true;
-            capture.foundSize = it->second.first;
-            checkAssert(capture.format == it->second.second, std::format("Got {} as VkFormat instead of the expected {}", it->second.second, capture.format).c_str());
-
-            capture.sharedTextures[OpenXR::EyeSide::LEFT] = std::make_unique<SharedTexture>(capture.foundSize.width, capture.foundSize.height, capture.format, D3D12Utils::ToDXGIFormat(capture.format));
-            capture.sharedTextures[OpenXR::EyeSide::RIGHT] = std::make_unique<SharedTexture>(capture.foundSize.width, capture.foundSize.height, capture.format, D3D12Utils::ToDXGIFormat(capture.format));
-            capture.sharedTextures[OpenXR::EyeSide::LEFT]->d3d12GetTexture()->SetName(std::format(L"CaptureTexture #{} - Left", captureIdx).c_str());
-            capture.sharedTextures[OpenXR::EyeSide::RIGHT]->d3d12GetTexture()->SetName(std::format(L"captureTexture #{} - Right", captureIdx).c_str());
-            imageResolutions.erase(it);
-            foundResolutions--;
-            Log::print("Found depth capture texture {}: res={}x{}, format={}", captureIdx, capture.foundSize.width, capture.foundSize.height, capture.format);
-
-            ComPtr<ID3D12CommandAllocator> cmdAllocator;
-            {
-                ID3D12Device* d3d12Device = VRManager::instance().D3D12->GetDevice();
-                ID3D12CommandQueue* d3d12Queue = VRManager::instance().D3D12->GetCommandQueue();
-                d3d12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&cmdAllocator));
-                auto& sharedTextures = capture.sharedTextures;
-
-                RND_D3D12::CommandContext<true> transitionInitialTextures(d3d12Device, d3d12Queue, cmdAllocator.Get(), [&sharedTextures, captureIdx](RND_D3D12::CommandContext<true>* context) {
-                    context->GetRecordList()->SetName(L"transitionInitialTextures");
-                    sharedTextures[OpenXR::EyeSide::LEFT]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COPY_DEST);
-                    sharedTextures[OpenXR::EyeSide::RIGHT]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COPY_DEST);
-                    context->Signal(sharedTextures[OpenXR::EyeSide::LEFT].get(), 0);
-                    context->Signal(sharedTextures[OpenXR::EyeSide::RIGHT].get(), 0);
-                });
             }
 
-            lockImageResolutions.unlock();
+            if (image != first3DDepthImage) {
+                return;
+            }
+
+            if (layer3D.GetStatus() == Status3D::LEFT_BINDING_DEPTH || layer3D.GetStatus() == Status3D::RIGHT_BINDING_DEPTH) {
+                // seems to always be the case whenever closing the (inventory) menu
+                Log::print("A depth texture is already bound for the current frame!");
+                return;
+            }
+
+            checkAssert(layer3D.GetStatus() == Status3D::LEFT_BINDING_COLOR || layer3D.GetStatus() == Status3D::RIGHT_BINDING_COLOR, "3D layer is not in the correct state for capturing depth images!");
+
+            SharedTexture* texture = layer3D.CopyDepthToLayer(commandBuffer, image);
+            s_activeCopyOperations.emplace_back(commandBuffer, texture);
+            return;
         }
-        capture.foundImage = image;
-        Log::print("[{}] Capturing depth texture {}", VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide() == OpenXR::EyeSide::LEFT ? "left" : "right", captureIdx);
-        capture.isCapturingSharedTextures[VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide()] = true;
-        capture.sharedTextures[VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide()]->CopyFromVkImage(commandBuffer, image);
-        capture.captureCmdBuffer = commandBuffer;
-        VRManager::instance().XR->GetRenderer()->m_layer3D.AddDepthTexture(VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide(), capture.sharedTextures[VRManager::instance().XR->GetRenderer()->m_layer3D.GetCurrentSide()].get());
-        VRManager::instance().XR->GetRenderer()->m_layer3D.FlipSide();
-        return;
     }
     else {
         return pDispatch->CmdClearDepthStencilImage(commandBuffer, image, imageLayout, pDepthStencil, rangeCount, pRanges);
@@ -206,20 +183,21 @@ VkResult VkDeviceOverrides::EndCommandBuffer(const vkroots::VkDeviceDispatch* pD
 }
 
 VkResult VkDeviceOverrides::QueueSubmit(const vkroots::VkDeviceDispatch* pDispatch, VkQueue queue, uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence) {
-    // insert pipeline barriers if an active capture is ongoing
-    bool activeCapture = std::any_of(captureTextures.begin(), captureTextures.end(), [](const CaptureTexture& capture) { return capture.captureCmdBuffer != VK_NULL_HANDLE; });
+    if (s_activeCopyOperations.empty()) {
+        return pDispatch->QueueSubmit(queue, submitCount, pSubmits, fence);
+    }
+    else {
+        // insert (possible) pipeline barriers for any active copy operations
+        struct ModifiedSubmitInfo_t {
+            std::vector<VkSemaphore> waitSemaphores;
+            std::vector<uint64_t> timelineWaitValues;
+            std::vector<VkPipelineStageFlags> waitDstStageMasks;
+            std::vector<VkSemaphore> signalSemaphores;
+            std::vector<uint64_t> timelineSignalValues;
 
-    struct ModifiedSubmitInfo_t {
-        std::vector<VkSemaphore> waitSemaphores;
-        std::vector<uint64_t> timelineWaitValues;
-        std::vector<VkPipelineStageFlags> waitDstStageMasks;
-        std::vector<VkSemaphore> signalSemaphores;
-        std::vector<uint64_t> timelineSignalValues;
+            VkTimelineSemaphoreSubmitInfo timelineSemaphoreSubmitInfo = { VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO };
+        };
 
-        VkTimelineSemaphoreSubmitInfo timelineSemaphoreSubmitInfo = { VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO };
-    };
-
-    if (activeCapture) {
         std::vector<ModifiedSubmitInfo_t> modifiedSubmitInfos(submitCount);
         for (uint32_t i = 0; i < submitCount; i++) {
             const VkSubmitInfo& submitInfo = pSubmits[i];
@@ -259,24 +237,22 @@ VkResult VkDeviceOverrides::QueueSubmit(const vkroots::VkDeviceDispatch* pDispat
                 modifiedSubmitInfo.timelineSignalValues.emplace_back(timelineSemaphoreSubmitInfoPtr->pSignalSemaphoreValues[j]);
             }
 
-            // insert timeline semaphores
+            // insert timeline semaphores for active copy operations
             for (uint32_t j = 0; j < submitInfo.commandBufferCount; j++) {
-                for (auto& capture : captureTextures) {
-                    if (submitInfo.pCommandBuffers[j] == capture.captureCmdBuffer) {
-                        for (size_t k = 0; k < capture.isCapturingSharedTextures.size(); k++) {
-                            if (capture.isCapturingSharedTextures[k]) {
-                                // wait for D3D12/XR to finish with previous shared texture render
-                                modifiedSubmitInfo.waitSemaphores.emplace_back(capture.sharedTextures[k]->GetSemaphore());
-                                modifiedSubmitInfo.waitDstStageMasks.emplace_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT); // check which stage is applicable; used to be set to
-                                modifiedSubmitInfo.timelineWaitValues.emplace_back(0);
+                for (auto it = s_activeCopyOperations.begin(); it != s_activeCopyOperations.end();) {
+                    if (submitInfo.pCommandBuffers[j] == it->first) {
+                        // wait for D3D12/XR to finish with previous shared texture render
+                        modifiedSubmitInfo.waitSemaphores.emplace_back(it->second->GetSemaphore());
+                        modifiedSubmitInfo.waitDstStageMasks.emplace_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+                        modifiedSubmitInfo.timelineWaitValues.emplace_back(0);
 
-                                // signal to D3D12/XR rendering that the shared texture can be rendered to VR headset
-                                modifiedSubmitInfo.signalSemaphores.emplace_back(capture.sharedTextures[k]->GetSemaphore());
-                                modifiedSubmitInfo.timelineSignalValues.emplace_back(1);
-                                capture.isCapturingSharedTextures[k] = false;
-                            }
-                        }
-                        capture.captureCmdBuffer = VK_NULL_HANDLE;
+                        // signal to D3D12/XR rendering that the shared texture can be rendered to VR headset
+                        modifiedSubmitInfo.signalSemaphores.emplace_back(it->second->GetSemaphore());
+                        modifiedSubmitInfo.timelineSignalValues.emplace_back(1);
+                        it = s_activeCopyOperations.erase(it);
+                    }
+                    else {
+                        ++it;
                     }
                 }
             }
@@ -294,19 +270,27 @@ VkResult VkDeviceOverrides::QueueSubmit(const vkroots::VkDeviceDispatch* pDispat
             const_cast<VkSubmitInfo&>(submitInfo).signalSemaphoreCount = (uint32_t)modifiedSubmitInfo.signalSemaphores.size();
             const_cast<VkSubmitInfo&>(submitInfo).pSignalSemaphores = modifiedSubmitInfo.signalSemaphores.data();
         }
-
-        return pDispatch->QueueSubmit(queue, submitCount, pSubmits, fence);
-    }
-    else {
         return pDispatch->QueueSubmit(queue, submitCount, pSubmits, fence);
     }
 }
 
+extern OpenXR::EyeSide s_currentEye;
+
 VkResult VkDeviceOverrides::QueuePresentKHR(const vkroots::VkDeviceDispatch* pDispatch, VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
     VRManager::instance().XR->ProcessEvents();
-    if (VRManager::instance().XR->GetRenderer() && ((VRManager::instance().XR->GetRenderer()->m_layer2D.ShouldRender() && VRManager::instance().XR->GetRenderer()->m_layer3D.GetStatus() == RND_Renderer::Layer::Status::PREPARING) || VRManager::instance().XR->GetRenderer()->m_layer3D.ShouldRender())) {
-        VRManager::instance().XR->GetRenderer()->EndFrame();
-        VRManager::instance().XR->GetRenderer()->StartFrame();
+
+    RND_Renderer* renderer = VRManager::instance().XR->GetRenderer();
+    if (renderer && renderer->m_layer3D.GetStatus() != Status3D::UNINITIALIZED) {
+        if (renderer->m_layer3D.GetStatus() == Status3D::LEFT_BINDING_DEPTH) {
+            //Log::print("Preparing for 3D rendering - right eye");
+            renderer->m_layer3D.PrepareRendering(OpenXR::EyeSide::RIGHT);
+            s_currentEye = OpenXR::EyeSide::LEFT;
+        }
+        else {
+            renderer->EndFrame();
+            renderer->StartFrame();
+            s_currentEye = OpenXR::EyeSide::RIGHT;
+        }
     }
     return pDispatch->QueuePresentKHR(queue, pPresentInfo);
 }

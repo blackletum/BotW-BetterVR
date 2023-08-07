@@ -58,18 +58,22 @@ struct data_VRCameraIn {
 };
 
 struct data_VRCameraOut {
+    uint32_t enabled;
     float posX;
     float posY;
     float posZ;
     float targetX;
     float targetY;
     float targetZ;
+};
+
+struct data_VRCameraRotationOut {
+    uint32_t enabled;
     float rotX;
     float rotY;
     float rotZ;
-    float aspectRatio;
-    float fovY;
 };
+
 
 struct data_VRProjectionMatrixOut {
     float aspectRatio;
