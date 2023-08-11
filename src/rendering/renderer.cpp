@@ -3,8 +3,6 @@
 #include "texture.h"
 #include "utils/d3d12_utils.h"
 
-#include <glm/glm.hpp>
-
 
 RND_Renderer::RND_Renderer(XrSession xrSession): m_session(xrSession) {
     XrSessionBeginInfo m_sessionCreateInfo = { XR_TYPE_SESSION_BEGIN_INFO };
@@ -410,8 +408,6 @@ void RND_Renderer::Layer2D::Render() {
     });
 }
 
-constexpr float DISTANCE = 2.0f;
-constexpr float QUAD_SIZE = 1.0f;
 XrCompositionLayerQuad RND_Renderer::Layer2D::FinishRendering() {
     checkAssert(m_status == Status2D::RENDERING, "Should have rendered before ending it");
     m_status = Status2D::NOT_RENDERING;
@@ -419,16 +415,38 @@ XrCompositionLayerQuad RND_Renderer::Layer2D::FinishRendering() {
     this->m_swapchain->FinishRendering();
 
     XrSpaceLocation spaceLocation = { XR_TYPE_SPACE_LOCATION };
-    xrLocateSpace(VRManager::instance().XR->m_headSpace, VRManager::instance().XR->m_stageSpace, VRManager::instance().XR->GetRenderer()->m_frameState.predictedDisplayTime, &spaceLocation);
+    xrLocateSpace(VRManager::instance().XR->m_headSpace, VRManager::instance().XR->m_stageSpace, m_predictedTime, &spaceLocation);
+    glm::quat headOrientation = glm::quat(spaceLocation.pose.orientation.w, spaceLocation.pose.orientation.x, spaceLocation.pose.orientation.y, spaceLocation.pose.orientation.z);
+    glm::vec3 headPosition = glm::vec3(spaceLocation.pose.position.x, spaceLocation.pose.position.y, spaceLocation.pose.position.z);
 
-    spaceLocation.pose.position.z -= DISTANCE;
-    spaceLocation.pose.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+    if (CemuHooks::GetSettings().guiFollowSetting == 1) {
+        m_currentOrientation = glm::slerp(m_currentOrientation, headOrientation, LERP_SPEED);
+        glm::vec3 forwardDirection = headOrientation * glm::vec3(0.0f, 0.0f, -1.0f);
 
-    float aspectRatio = (float)this->m_texture->d3d12GetTexture()->GetDesc().Width / (float)this->m_texture->d3d12GetTexture()->GetDesc().Height;
+        // calculate new position forwards
+        glm::vec3 targetPosition = headPosition + (DISTANCE * forwardDirection);
 
-    float width = aspectRatio > 1.0f ? aspectRatio : 1.0f;
-    float height = aspectRatio <= 1.0f ? 1.0f / aspectRatio : 1.0f;
+        // calculate rightward direction
+        glm::vec3 rightDirection = glm::normalize(glm::cross(forwardDirection, glm::vec3(0.0f, 1.0f, 0.0f)));
 
+        // recalculate up direction using right and forward direction
+        glm::vec3 upDirection = glm::cross(rightDirection, forwardDirection);
+        glm::quat userFacingOrientation = glm::quatLookAt(forwardDirection, upDirection);
+
+        spaceLocation.pose.orientation = { userFacingOrientation.x, userFacingOrientation.y, userFacingOrientation.z, userFacingOrientation.w };
+        spaceLocation.pose.position = { targetPosition.x, targetPosition.y, targetPosition.z };
+    }
+    else {
+        spaceLocation.pose.position.z -= DISTANCE;
+        spaceLocation.pose.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+    }
+
+    const float aspectRatio = (float)this->m_texture->d3d12GetTexture()->GetDesc().Width / (float)this->m_texture->d3d12GetTexture()->GetDesc().Height;
+
+    const float width = aspectRatio > 1.0f ? aspectRatio : 1.0f;
+    const float height = aspectRatio <= 1.0f ? 1.0f / aspectRatio : 1.0f;
+
+    constexpr float MENU_SIZE = 1.0f;
     // clang-format off
     return {
         .type = XR_TYPE_COMPOSITION_LAYER_QUAD,
@@ -446,7 +464,7 @@ XrCompositionLayerQuad RND_Renderer::Layer2D::FinishRendering() {
             }
         },
         .pose = spaceLocation.pose,
-        .size = { width * QUAD_SIZE, height * QUAD_SIZE }
+        .size = { width * MENU_SIZE, height * MENU_SIZE }
     };
     // clang-format on
 }

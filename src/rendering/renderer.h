@@ -3,6 +3,9 @@
 #include "d3d12.h"
 #include "openxr.h"
 
+#include <glm/ext/quaternion_float.hpp>
+#include <glm/ext/quaternion_common.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 
 class RND_Renderer {
@@ -92,6 +95,10 @@ public:
 
         Status2D m_status = Status2D::UNINITIALIZED;
         XrTime m_predictedTime = 0;
+
+        static constexpr float DISTANCE = 2.0f;
+        static constexpr float LERP_SPEED = 0.05f;
+        glm::quat m_currentOrientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     };
 
     Layer3D m_layer3D;

@@ -12,13 +12,9 @@ void CemuHooks::hook_UpdateSettings(PPCInterpreter_t* hCPU) {
     data_VRSettingsIn settings = {};
 
     readMemory(ppc_settingsOffset, &settings);
-    swapEndianness(settings.modeSetting);
+    swapEndianness(settings.cameraModeSetting);
+    swapEndianness(settings.guiFollowSetting);
     swapEndianness(settings.alternatingEyeRenderingSetting);
-    swapEndianness(settings.eyeSeparationSetting);
-    swapEndianness(settings.headPositionSensitivitySetting);
-    swapEndianness(settings.heightPositionOffsetSetting);
-    swapEndianness(settings.hudScaleSetting);
-    swapEndianness(settings.menuScaleSetting);
 
     g_settings.store(settings);
     s_framesSinceLastCameraUpdate++;

@@ -39,13 +39,9 @@ using Microsoft::WRL::ComPtr;
 
 
 struct data_VRSettingsIn {
-    int32_t modeSetting;
+    int32_t cameraModeSetting;
+    int32_t guiFollowSetting;
     int32_t alternatingEyeRenderingSetting;
-    float eyeSeparationSetting;
-    float headPositionSensitivitySetting;
-    float heightPositionOffsetSetting;
-    float hudScaleSetting;
-    float menuScaleSetting;
 };
 
 struct data_VRCameraIn {

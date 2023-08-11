@@ -6,38 +6,44 @@ description = Used to enable and change VR settings for BetterVR.||Made by Creme
 version = 7
 
 [Default]
-$FOV = 0.872665
-$cameraDistance = 0.5 # currently disabled
+$cameraMode:int = 0
+$guiFollowMode:int = 1
+$AER:int = 0
+
+$cameraDistance = 0.5
 $linkOpacity = 1.0
 
-$mode:int = 0
-$AER:int = 0
-$hudScale = 0.4
-$menuScale = 0.4
-$eyeSeparation = 0.067000
 
-# This changes how much moving your headset moves the in-game camera
-$headPositionSensitivity = 2.5
-# This value gets subtracted from the camera height to make the camera look smaller
-$heightPositionOffset = 0.0
-
-
-# Mode selector
+# Camera Mode
 
 [Preset]
 name = Third-Person Camera (Default)
 category = Camera Mode
 default = 1
+$cameraMode = 0
+$linkOpacity = 1.0
 
 [Preset]
 name = First-Person Camera
 category = Camera Mode
-$mode = 1
+$cameraMode = 1
+$linkOpacity = 0.0
+$cameraDistance = 0.0
+
+
+# GUI Follow Mode
 
 [Preset]
-name = First-Person Link View
-category = Camera Mode
-$mode = 2
+name = HUD & Menus Will Follow Your Head (Default)
+category = GUI Follow Mode
+default = 1
+$guiFollowMode:int = 1
+
+
+[Preset]
+name = HUD & Menus Stays In Front
+category = GUI Follow Mode
+$guiFollowMode:int = 0
 
 
 # Alternate Eye Rendering
@@ -54,150 +60,35 @@ default = 1
 $AER = 0
 
 
-# Room Scale Movement Sensitivity
-
-[Preset]
-name = None (Disabled)
-category = Room Scale Movement
-$headPositionSensitivity = 0.0
-
-[Preset]
-name = Low (0.75x player size)
-category = Room Scale Movement
-$headPositionSensitivity = 0.75
-
-[Preset]
-name = Normal (real player size)
-category = Room Scale Movement
-$headPositionSensitivity = 1.0
-
-[Preset]
-name = High (1.0x player size)
-category = Room Scale Movement
-$headPositionSensitivity = 1.25
-
-[Preset]
-name = Ultra (1.5x player size)
-category = Room Scale Movement
-$headPositionSensitivity = 1.5
-
-[Preset]
-name = Extreme (2.0x player size)
-category = Room Scale Movement
-$headPositionSensitivity = 2.0
-
-
 # Third Person - Camera Distance
 
 [Preset]
 name = Low
 category = Camera Distance
-condition = $mode == 0
+condition = $cameraMode == 0
 $cameraDistance = 0.4
 
 [Preset]
 name = Normal (Default)
 category = Camera Distance
-condition = $mode == 0
+condition = $cameraMode == 0
 default = 1
 $cameraDistance = 0.5
 
 [Preset]
 name = High
 category = Camera Distance
-condition = $mode == 0
+condition = $cameraMode == 0
 $cameraDistance = 0.675
 
 [Preset]
 name = Very High
 category = Camera Distance
-condition = $mode == 0
+condition = $cameraMode == 0
 $cameraDistance = 0.8
 
 [Preset]
 name = Extreme
 category = Camera Distance
-condition = $mode == 0
+condition = $cameraMode == 0
 $cameraDistance = 0.9
-
-
-# Field Of View
-
-[Preset]
-name = Extreme
-category = Field Of View
-$FOV = 1.97
-
-[Preset]
-name = Very High
-category = Field Of View
-$FOV = 1.1
-
-[Preset]
-name = High
-category = Field Of View
-$FOV = 0.95
-
-[Preset]
-name = Normal (Default)
-category = Field Of View
-default = 1
-$FOV = 0.872665
-
-[Preset]
-name = Low
-category = Field Of View
-$FOV = 0.75
-
-[Preset]
-name = Very Low
-category = Field Of View
-$FOV = 0.6
-
-
-# HUD Scale
-
-[Preset]
-name = Tiny
-category = HUD Scale (hearts, minimap etc.)
-$hudScale = 0.3
-
-[Preset]
-name = Small (Recommended)
-category = HUD Scale (hearts, minimap etc.)
-default = 1
-$hudScale = 0.4
-
-[Preset]
-name = Medium
-category = HUD Scale (hearts, minimap etc.)
-$hudScale = 0.5
-
-[Preset]
-name = Big
-category = HUD Scale (hearts, minimap etc.)
-$hudScale = 0.6
-
-
-# Menu Scale
-
-[Preset]
-name = Tiny
-category = Menu Scale (inventory, map etc.)
-$menuScale = 1.2
-
-[Preset]
-name = Small
-category = Menu Scale (inventory, map etc.)
-default = 1
-$menuScale = 0.75
-
-[Preset]
-name = Medium (Recommended)
-category = Menu Scale (inventory, map etc.)
-$menuScale = 0.6
-
-[Preset]
-name = Big
-category = Menu Scale (inventory, map etc.)
-$menuScale = 0.5

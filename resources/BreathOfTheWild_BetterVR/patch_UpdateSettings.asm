@@ -5,20 +5,14 @@ moduleMatches = 0x6267BFD0
 
 
 data_settingsOffset:
-ModeSetting:
-.int $mode
+CameraModeSetting:
+.int $cameraMode
+
+GUIFollowModeSetting:
+.int $guiFollowMode
+
 AlternatingEyeRenderingSetting:
 .int $AER
-EyeSeparationSetting:
-.float $eyeSeparation
-HeadPositionSensitivitySetting:
-.float $headPositionSensitivity
-HeightPositionOffsetSetting:
-.float $heightPositionOffset
-HUDScaleSetting:
-.float $hudScale
-MenuScaleSetting:
-.float $menuScale
 
 
 vr_updateSettings:
