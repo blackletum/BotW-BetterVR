@@ -74,7 +74,6 @@ public:
 };
 
 static void checkXRResult(XrResult result, const char* errorMessage) {
-    XrResult resultCheck = result;
     if (XR_FAILED(result)) {
         if (errorMessage == nullptr) {
             Log::print("[Error] An unknown error (result was {}) has occurred!", result);

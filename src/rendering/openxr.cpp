@@ -3,7 +3,7 @@
 
 
 static void XR_DebugUtilsMessengerCallback(XrDebugUtilsMessageSeverityFlagsEXT messageSeverity, XrDebugUtilsMessageTypeFlagsEXT messageType, const XrDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData) {
-    Log::print("[OpenXR Debug Utils] Function {}: {}", callbackData->functionName, callbackData->message);
+    //Log::print("[OpenXR Debug Utils] Function {}: {}", callbackData->functionName, callbackData->message);
 }
 
 OpenXR::OpenXR() {
@@ -19,6 +19,7 @@ OpenXR::OpenXR() {
     bool timeConvSupported = false;
     bool debugUtilsSupported = false;
     for (XrExtensionProperties& extensionProperties : instanceExtensions) {
+        Log::print("Found available OpenXR extension: {}", extensionProperties.extensionName);
         if (strcmp(extensionProperties.extensionName, XR_KHR_D3D12_ENABLE_EXTENSION_NAME) == 0) {
             d3d12Supported = true;
         }
@@ -164,17 +165,149 @@ void OpenXR::CreateSession(const XrGraphicsBindingD3D12KHR& d3d12Binding) {
     checkXRResult(xrCreateSession(m_instance, &sessionCreateInfo, &m_session), "Failed to create Vulkan-based OpenXR session!");
 
     Log::print("Creating the OpenXR spaces...");
-    constexpr XrPosef xrIdentityPose = { .orientation = { .x = 0, .y = 0, .z = 0, .w = 1 }, .position = { .x = 0, .y = 0, .z = 0 } };
-
     XrReferenceSpaceCreateInfo stageSpaceCreateInfo = { XR_TYPE_REFERENCE_SPACE_CREATE_INFO };
     stageSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
-    stageSpaceCreateInfo.poseInReferenceSpace = xrIdentityPose;
+    stageSpaceCreateInfo.poseInReferenceSpace = s_xrIdentityPose;
     checkXRResult(xrCreateReferenceSpace(m_session, &stageSpaceCreateInfo, &m_stageSpace), "Failed to create reference space for stage!");
 
     XrReferenceSpaceCreateInfo headSpaceCreateInfo = { XR_TYPE_REFERENCE_SPACE_CREATE_INFO };
     headSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
-    headSpaceCreateInfo.poseInReferenceSpace = xrIdentityPose;
+    headSpaceCreateInfo.poseInReferenceSpace = s_xrIdentityPose;
     checkXRResult(xrCreateReferenceSpace(m_session, &headSpaceCreateInfo, &m_headSpace), "Failed to create reference space for head!");
+}
+
+void OpenXR::CreateActions() {
+    Log::print("Creating the OpenXR actions...");
+
+    XrActionSetCreateInfo actionSetInfo = { XR_TYPE_ACTION_SET_CREATE_INFO };
+    strcpy_s(actionSetInfo.actionSetName, "gameplay");
+    strcpy_s(actionSetInfo.localizedActionSetName, "Gameplay");
+    actionSetInfo.priority = 0;
+    checkXRResult(xrCreateActionSet(m_instance, &actionSetInfo, &m_gameplayActionSet), "Failed to create controller bindings!");
+
+    m_handPaths = { GetXRPath("/user/hand/left"), GetXRPath("/user/hand/right") };
+
+    {
+        XrActionCreateInfo grabActionInfo = { XR_TYPE_ACTION_CREATE_INFO };
+        grabActionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
+        strcpy_s(grabActionInfo.actionName, "grab");
+        strcpy_s(grabActionInfo.localizedActionName, "Grab");
+        grabActionInfo.countSubactionPaths = (uint32_t)m_handPaths.size();
+        grabActionInfo.subactionPaths = m_handPaths.data();
+        checkXRResult(xrCreateAction(m_gameplayActionSet, &grabActionInfo, &m_grabAction), "Failed to create grab action!");
+
+        XrActionCreateInfo moveActionInfo = { XR_TYPE_ACTION_CREATE_INFO };
+        moveActionInfo.actionType = XR_ACTION_TYPE_VECTOR2F_INPUT;
+        strcpy_s(moveActionInfo.actionName, "move");
+        strcpy_s(moveActionInfo.localizedActionName, "Move");
+        moveActionInfo.countSubactionPaths = (uint32_t)m_handPaths.size();
+        moveActionInfo.subactionPaths = m_handPaths.data();
+        checkXRResult(xrCreateAction(m_gameplayActionSet, &moveActionInfo, &m_moveAction), "Failed to create move action!");
+
+        XrActionCreateInfo poseActionInfo = { XR_TYPE_ACTION_CREATE_INFO };
+        poseActionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
+        strcpy_s(poseActionInfo.actionName, "pose");
+        strcpy_s(poseActionInfo.localizedActionName, "Pose");
+        poseActionInfo.countSubactionPaths = (uint32_t)m_handPaths.size();
+        poseActionInfo.subactionPaths = m_handPaths.data();
+        checkXRResult(xrCreateAction(m_gameplayActionSet, &poseActionInfo, &m_poseAction), "Failed to create hand pose action!");
+    }
+
+    {
+        std::array<XrActionSuggestedBinding, 4> suggestedBindings = {
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/right/input/select/click") },
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/select/click") },
+            XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/right/input/grip/pose") },
+            XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/left/input/grip/pose") }
+        };
+        XrInteractionProfileSuggestedBinding suggestedBindingsInfo = { XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+        suggestedBindingsInfo.interactionProfile = GetXRPath("/interaction_profiles/khr/simple_controller");
+        suggestedBindingsInfo.countSuggestedBindings = (uint32_t)suggestedBindings.size();
+        suggestedBindingsInfo.suggestedBindings = suggestedBindings.data();
+        checkXRResult(xrSuggestInteractionProfileBindings(m_instance, &suggestedBindingsInfo), "Failed to suggest simple controller profile bindings!");
+    }
+
+    {
+        std::array<XrActionSuggestedBinding, 6> suggestedBindings = {
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/right/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/right/input/thumbstick") },
+            XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/left/input/thumbstick") },
+            XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/right/input/grip/pose") },
+            XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/left/input/grip/pose") }
+        };
+        XrInteractionProfileSuggestedBinding suggestedBindingsInfo = { XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+        suggestedBindingsInfo.interactionProfile = GetXRPath("/interaction_profiles/oculus/touch_controller");
+        suggestedBindingsInfo.countSuggestedBindings = (uint32_t)suggestedBindings.size();
+        suggestedBindingsInfo.suggestedBindings = suggestedBindings.data();
+        checkXRResult(xrSuggestInteractionProfileBindings(m_instance, &suggestedBindingsInfo), "Failed to suggest touch controller profile bindings!");
+    }
+
+    {
+        std::array<XrActionSuggestedBinding, 6> suggestedBindings = {
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/right/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/right/input/thumbstick") },
+            XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/left/input/thumbstick") },
+            XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/right/input/grip/pose") },
+            XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/left/input/grip/pose") }
+        };
+        XrInteractionProfileSuggestedBinding suggestedBindingsInfo = { XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+        suggestedBindingsInfo.interactionProfile = GetXRPath("/interaction_profiles/microsoft/motion_controller");
+        suggestedBindingsInfo.countSuggestedBindings = (uint32_t)suggestedBindings.size();
+        suggestedBindingsInfo.suggestedBindings = suggestedBindings.data();
+        checkXRResult(xrSuggestInteractionProfileBindings(m_instance, &suggestedBindingsInfo), "Failed to suggest microsoft motion controller profile bindings!");
+    }
+
+    XrSessionActionSetsAttachInfo attachInfo = { XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO };
+    std::array<XrActionSet, 1> actionSets = { m_gameplayActionSet };
+    attachInfo.countActionSets = (uint32_t)actionSets.size();
+    attachInfo.actionSets = actionSets.data();
+    checkXRResult(xrAttachSessionActionSets(m_session, &attachInfo), "Failed to attach action sets to session!");
+
+    for (EyeSide side : { EyeSide::LEFT, EyeSide::RIGHT }) {
+        XrActionSpaceCreateInfo createInfo = { XR_TYPE_ACTION_SPACE_CREATE_INFO };
+        createInfo.action = m_poseAction;
+        createInfo.subactionPath = m_handPaths[side];
+        createInfo.poseInActionSpace = s_xrIdentityPose;
+        checkXRResult(xrCreateActionSpace(m_session, &createInfo, &m_input.hands[side].poseSpace), "Failed to create action space for hand pose!");
+    }
+}
+
+void OpenXR::UpdateActions(XrTime predictedFrameTime) {
+    XrActionsSyncInfo syncInfo = { XR_TYPE_ACTIONS_SYNC_INFO };
+    std::array<XrActiveActionSet, 1> activeActionSet = { XrActiveActionSet{ m_gameplayActionSet, XR_NULL_PATH } };
+    syncInfo.countActiveActionSets = (uint32_t)activeActionSet.size();
+    syncInfo.activeActionSets = activeActionSet.data();
+    checkXRResult(xrSyncActions(m_session, &syncInfo), "Failed to sync actions!");
+
+    for (EyeSide side : { EyeSide::LEFT, EyeSide::RIGHT }) {
+        XrActionStateGetInfo getGrabInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
+        getGrabInfo.action = m_grabAction;
+        getGrabInfo.subactionPath = m_handPaths[side];
+        m_input.hands[side].grab = { XR_TYPE_ACTION_STATE_BOOLEAN };
+        checkXRResult(xrGetActionStateBoolean(m_session, &getGrabInfo, &m_input.hands[side].grab), "Failed to get grab action value!");
+
+        XrActionStateGetInfo getPoseInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
+        getPoseInfo.action = m_poseAction;
+        getPoseInfo.subactionPath = m_handPaths[side];
+        m_input.hands[side].pose = { XR_TYPE_ACTION_STATE_POSE };
+        checkXRResult(xrGetActionStatePose(m_session, &getPoseInfo, &m_input.hands[side].pose), "Failed to get pose action value!");
+
+        if (m_input.hands[side].pose.isActive) {
+            XrSpaceLocation spaceLocation = { XR_TYPE_SPACE_LOCATION };
+            checkXRResult(xrLocateSpace(m_input.hands[side].poseSpace, m_stageSpace, m_frameTimes[side], &spaceLocation), "Failed to get location from controllers!");
+            if ((spaceLocation.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0 && (spaceLocation.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) != 0) {
+                m_input.hands[side].poseLocation = spaceLocation;
+            }
+        }
+    }
+
+    XrActionStateGetInfo getMoveInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
+    getMoveInfo.action = m_moveAction;
+    getMoveInfo.subactionPath = XR_NULL_PATH;
+    m_input.shared.move = { XR_TYPE_ACTION_STATE_VECTOR2F };
+    checkXRResult(xrGetActionStateVector2f(m_session, &getMoveInfo, &m_input.shared.move), "Failed to get move action value!");
 }
 
 bool firstInit = true;

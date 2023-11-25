@@ -26,6 +26,7 @@ void RND_Renderer::StartFrame() {
     checkXRResult(xrBeginFrame(m_session, &beginFrameInfo), "Couldn't begin OpenXR frame!");
 
     VRManager::instance().D3D12->StartFrame();
+    VRManager::instance().XR->UpdateTime(OpenXR::EyeSide::LEFT, m_frameState.predictedDisplayTime);
 
     if (m_layer3D.GetStatus() == Layer3D::Status3D::NOT_RENDERING) {
         m_layer3D.PrepareRendering(OpenXR::EyeSide::LEFT);
@@ -43,6 +44,7 @@ void RND_Renderer::StartFrame() {
     m_layer3D.UpdatePredictedTime(OpenXR::EyeSide::RIGHT, m_frameState.predictedDisplayTime);
     m_layer2D.UpdatePredictedTime(m_frameState.predictedDisplayTime);
     VRManager::instance().XR->UpdateSpaces(m_frameState.predictedDisplayTime);
+    VRManager::instance().XR->UpdateActions(m_frameState.predictedDisplayTime);
 
     // currently we only support non-AER presenting, aka we render two textures with the same pose and then we present them
     if (CemuHooks::GetSettings().alternatingEyeRenderingSetting == 0) {

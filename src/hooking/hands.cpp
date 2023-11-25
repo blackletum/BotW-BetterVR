@@ -1,4 +1,5 @@
 #include "cemu_hooks.h"
+#include "../instance.h"
 
 struct ActorWiiU {
     uint32_t vtable;
@@ -12,6 +13,22 @@ struct ActorWiiU {
     Vec3 scale;
 };
 
+struct ActorWiiUOrig {
+    uint32_t vtable; // 0x00
+    BEType<uint32_t> baseProcPtr; // 0x04
+    uint8_t unk_08[0xF4 - 0x08];
+    uint32_t physicsMainBodyPtr; // 0xF4
+    uint32_t physicsTgtBodyPtr; // 0xF8
+    uint8_t unk_FC[0x1F8 - 0xFC];
+    Matrix34 mtx; // 0x1F8
+    uint32_t physicsMtxPtr;
+    Matrix34 homeMtx;
+    Vec3 velocity;
+    Vec3 angularVelocity;
+    Vec3 scale;
+};
+
+
 std::vector<ActorWiiU> s_actors;
 std::vector<uint32_t> s_actorPtrs;
 
@@ -24,7 +41,9 @@ void CemuHooks::hook_UpdateActorList(PPCInterpreter_t* hCPU) {
 
     // clear actor list when reiterating actor list again
     if (hCPU->gpr[5] == 0) {
+        Log::print("Clearing actor list");
         s_actors.clear();
+        s_actorPtrs.clear();
     }
 
     uint32_t actorPtr = hCPU->gpr[6] + offsetof(ActorWiiU, baseProcPtr);
@@ -49,15 +68,43 @@ void CemuHooks::hook_UpdateActorList(PPCInterpreter_t* hCPU) {
 
 void CemuHooks::updateFrames() {
     for (uint32_t actorPtr : s_actorPtrs) {
-        float velocityAngY = 0.0f;
-        readMemoryBE(actorPtr + offsetof(ActorWiiU, angularVelocity.y), &velocityAngY);
-        velocityAngY = 300.0f;
-        writeMemoryBE(actorPtr + offsetof(ActorWiiU, angularVelocity.y), &velocityAngY);
+        uint32_t actorPhysicsMtx = 0;
+        readMemoryBE(actorPtr + offsetof(ActorWiiU, physicsMtxPtr), &actorPhysicsMtx);
+        if (actorPhysicsMtx != 0) {
+            // Matrix34 physicsMtx = {};
+            // readMemoryBE(actorPhysicsMtx, &physicsMtx);
+            // float posX = physicsMtx.pos_x;
+            // float posY = physicsMtx.pos_y;
+            // float posZ = physicsMtx.pos_z;
+            //
+            // float newPosX = posX + 20.0f;
+            // float newPosY = posY + 20.0f;
+            // float newPosZ = posZ + 20.0f;
+            // physicsMtx.pos_x = newPosX;
+            // physicsMtx.pos_y = newPosY;
+            // physicsMtx.pos_z = newPosZ;
+            // Matrix34 backupMtx = physicsMtx;
+            // writeMemoryBE(actorPhysicsMtx, &physicsMtx);
 
-        float velocityY = 0.0f;
-        readMemoryBE(actorPtr + offsetof(ActorWiiU, velocity.y), &velocityY);
-        velocityY = 300.0f;
-        writeMemoryBE(actorPtr + offsetof(ActorWiiU, velocity.y), &velocityY);
+            Log::print("This actor has physics?!");
+        }
+
+        Matrix34 mtx = {};
+        readMemoryBE(actorPtr + offsetof(ActorWiiU, mtx), &mtx);
+        float posX = mtx.pos_x;
+        float posY = mtx.pos_y;
+        float posZ = mtx.pos_z;
+
+        float newPosX = posX + 20.0f;
+        float newPosY = posY + 20.0f;
+        float newPosZ = posZ + 20.0f;
+        mtx.pos_x = newPosX;
+        mtx.pos_y = newPosY;
+        mtx.pos_z = newPosZ;
+        Matrix34 backupMtx = mtx;
+        writeMemoryBE(actorPtr + offsetof(ActorWiiU, homeMtx), &mtx);
+        writeMemoryBE(actorPtr + offsetof(ActorWiiU, mtx), &mtx);
+        //Log::print("Updating actor list {:08x} currX={}, currY={}, currZ={} -> newX={}, newY={}, newZ={}", actorPtr, posX, posY, posZ, backupMtx.pos_x, backupMtx.pos_y, backupMtx.pos_z);
     }
 }
 

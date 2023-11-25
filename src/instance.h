@@ -27,6 +27,7 @@ public:
         d3d12Binding.device = D3D12->GetDevice();
         d3d12Binding.queue = D3D12->GetCommandQueue();
         XR->CreateSession(d3d12Binding);
+        XR->CreateActions();
         Hooks = std::make_unique<CemuHooks>();
     }
 
