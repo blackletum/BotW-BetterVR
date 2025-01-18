@@ -91,11 +91,100 @@ struct ActorWiiU {
     BEType<float> lodDrawDistanceMultiplier;
     PADDED_BYTES(0x494, 0x538);
 };
+
+struct WeaponBase : ActorWiiU {
+    PADDED_BYTES(0x53C, 0x728);
+};
+
+struct Struct20 {
+    BEType<uint32_t> __vftable;
+    BEType<uint32_t> field_4;
+    BEType<uint32_t> field_8;
+    BEType<uint32_t> field_C;
+    BEType<uint32_t> field_10;
+    BEType<uint32_t> field_14;
+};
+
+struct DamageMgr {
+    BEType<uint32_t> struct20Ptr;
+    BEType<uint32_t> struct20PlayerRelatedPtr;
+    BEType<uint32_t> actor;
+    struct {
+        BEType<uint32_t> size;
+        BEType<uint32_t> pointer;
+    } damageCallbacks;
+    BEType<uint32_t> field_14;
+    BEType<uint8_t> field_18;
+    BEType<uint8_t> field_19;
+    BEType<uint8_t> field_1A;
+    BEType<uint8_t> field_1B;
+    BEType<uint32_t> __vftable;
+    BEType<uint32_t> deleter;
+    BEType<uint32_t> field_24;
+    BEType<uint32_t> damage;
+    BEType<uint32_t> field_2C;
+    BEType<uint32_t> minDmg;
+    BEType<uint32_t> field_34;
+    BEType<uint32_t> field_38;
+    BEType<uint32_t> field_3C;
+    BEType<uint32_t> damageType;
+    BEType<uint32_t> field_44;
+    BEType<uint8_t> field_48;
+    BEType<uint8_t> field_49;
+    BEType<uint8_t> field_4A;
+    BEType<uint8_t> field_4B;
+};
+
+struct Weapon : WeaponBase {
+    PADDED_BYTES(0x72C, 0x95C);
+    BEType<uint32_t> weaponShockwaves;
+    PADDED_BYTES(0x964, 0x96C);
+    BEType<uint32_t> field_974_triggerEventsMaybe;
+    BEVec3 field_978;
+    BEType<uint32_t> field_984;
+    BEType<uint32_t> field_988;
+    BEType<uint32_t> field_98C;
+    BEType<uint32_t> field_990;
+    BEVec3 originalScale;
+    BEType<uint32_t> field_99C;
+    BEType<uint32_t> field_9A0;
+    BEType<uint32_t> field_9A4;
+    BEType<uint32_t> field_9A8;
+    BEType<uint32_t> field_9AC;
+    BEType<uint32_t> field_9B0;
+    BEType<uint32_t> field_9B4;
+    struct {
+        PADDED_BYTES(0x00, 0x08);
+        BEType<uint32_t> struct7Ptr; // stores attackinfo, so prolly post-hit stuff
+        BEType<uint32_t> field_10;
+        BEType<uint32_t> field_14;
+        BEType<uint32_t> field_18;
+        BEType<uint32_t> field_1C;
+        BEType<uint32_t> attackSensorPtr;
+        BEType<uint32_t> struct8Ptr; // stores attackinfo, so prolly post-hit stuff. seems to be more player specific
+        BEType<uint32_t> field_28;
+        BEType<uint32_t> field_2C;
+        BEType<uint32_t> field_30;
+        BEType<uint32_t> field_34;
+        BEType<uint32_t> attackSensorStruct8Ptr;
+        BEType<uint8_t> field_3C;
+        PADDED_BYTES(0x3D, 0x3C);
+    } actorAtk;
+    BEType<float> field_9F8;
+    BEType<float> field_9FC;
+    BEType<uint32_t> damageMgrPtr;
+    PADDED_BYTES(0xA04, 0xA10);
+    BEType<uint16_t> weaponFlags;
+    BEType<uint16_t> otherFlags;
+    PADDED_BYTES(0xA18, 0xB58);
+};
+
 #pragma pack(pop)
 
 static_assert(sizeof(ActorWiiU) == 0x53C);
-
-
+static_assert(sizeof(WeaponBase) == 0x72C);
+static_assert(sizeof(Weapon) == 0xB5C);
+static_assert(sizeof(DamageMgr) == 0x4C);
 
 
 static uint32_t stringToHash(const char* str) {
@@ -157,6 +246,7 @@ void CemuHooks::updateFrames() {
 
     std::scoped_lock lock(g_actorListMutex);
 
+#ifdef ENABLE_DEBUG_INSPECTOR
     if (overlay) {
         // remove actors in s_alreadyAddedActors that are no longer in s_knownActors
         for (const auto& hash : s_alreadyAddedActors | std::views::keys) {
@@ -240,12 +330,22 @@ void CemuHooks::updateFrames() {
                 overlay->AddOrUpdateEntity(actorId, actorName, name, address, getMemory<T>(address), true);
             };
 
-            auto addMemoryRange = [&](const std::string& name, uint32_t addressPtr, uint32_t size) -> void {
+            auto addMemoryRange = [&](const std::string& name, const uint32_t addressPtr, const uint32_t size) -> void {
                 uint32_t address = 0;
                 if (readMemoryBE(addressPtr, &address); address != 0) {
                     overlay->AddOrUpdateEntity(actorId, actorName, name, address, MemoryRange{ address, address + size, std::make_unique<MemoryEditor>() }, true);
                 }
             };
+
+            if (actorName.starts_with("Weapon")) {
+                addField.operator()<BEVec3>("Weapon::originalScale", offsetof(Weapon, originalScale));
+                addMemoryRange("Weapon::actorAtk.struct7Ptr", actorPtr + offsetof(Weapon, actorAtk.struct7Ptr), 0x2D8);
+                addMemoryRange("Weapon::actorAtk.attackSensorStruct7Ptr", actorPtr + offsetof(Weapon, actorAtk.attackSensorPtr), 0x5C);
+                addMemoryRange("Weapon::actorAtk.struct8Ptr", actorPtr + offsetof(Weapon, actorAtk.struct8Ptr), 0x714);
+                addMemoryRange("Weapon::actorAtk.attackSensorStruct8Ptr", actorPtr + offsetof(Weapon, actorAtk.attackSensorStruct8Ptr), 0x28);
+                addField.operator()<BEType<uint16_t>>("Weapon::weaponFlags", offsetof(Weapon, weaponFlags));
+                addField.operator()<BEType<uint16_t>>("Weapon::otherFlags", offsetof(Weapon, otherFlags));
+            }
 
             BEMatrix34 mtx = getMemory<BEMatrix34>(actorPtr + offsetof(ActorWiiU, mtx));
             overlay->AddOrUpdateEntity(actorId, actorName, "mtx", actorPtr + offsetof(ActorWiiU, mtx), mtx);
@@ -283,104 +383,6 @@ void CemuHooks::updateFrames() {
             addField.operator()<uint32_t>("flags2Copy", offsetof(ActorWiiU, flags2Copy));
             addField.operator()<uint32_t>("flags", offsetof(ActorWiiU, flags));
             addField.operator()<uint32_t>("flags3", offsetof(ActorWiiU, flags3));
-
-            // uint32_t actorPhysicsPtr = 0;
-            // if (readMemoryBE(actorPtr + offsetof(ActorWiiU, actorPhysicsPtr), &actorPhysicsPtr); actorPhysicsPtr != 0) {
-            //     float scale = 0.0f;
-            //     readMemoryBE(actorPhysicsPtr + offsetof(ActorPhysics, scale), &scale);
-            //     overlay->AddOrUpdateEntity(actorId, actorName, "scale", actorPhysicsPtr + offsetof(ActorPhysics, scale), BEType<float>(scale), true);
-            //
-            //     uint32_t rigidBodySize = 0;
-            //     readMemoryBE(actorPhysicsPtr + offsetof(ActorPhysics, rigidBodies.size), &rigidBodySize);
-            //     overlay->AddOrUpdateEntity(actorId, actorName, "rigidBodies.size", actorPhysicsPtr + offsetof(ActorPhysics, rigidBodies.size), BEType<uint32_t>(rigidBodySize), true);
-            //
-            //     uint32_t contactInfoSize = 0;
-            //     readMemoryBE(actorPhysicsPtr + offsetof(ActorPhysics, contactInfo.size), &contactInfoSize);
-            //     overlay->AddOrUpdateEntity(actorId, actorName, "contactInfo.size", actorPhysicsPtr + offsetof(ActorPhysics, contactInfo.size), BEType<uint32_t>(contactInfoSize), true);
-            //
-            //     uint32_t collisionInfoSize = 0;
-            //     readMemoryBE(actorPhysicsPtr + offsetof(ActorPhysics, collisionInfo.size), &collisionInfoSize);
-            //     overlay->AddOrUpdateEntity(actorId, actorName, "collisionInfo.size", actorPhysicsPtr + offsetof(ActorPhysics, collisionInfo.size), BEType<uint32_t>(collisionInfoSize), true);
-            //
-            //     uint32_t flags = 0;
-            //     readMemoryBE(actorPhysicsPtr + offsetof(ActorPhysics, flags), &flags);
-            //     overlay->AddOrUpdateEntity(actorId, actorName, "physicsFlags", actorPhysicsPtr + offsetof(ActorPhysics, flags), BEType<uint32_t>(flags), true);
-            //
-            //     auto AddFlagFromUint32 = [&](const std::string& name, uint32_t flag) {
-            //         overlay->AddOrUpdateEntity(actorId, actorName, name, actorPhysicsPtr + offsetof(ActorPhysics, flags), BEType<uint8_t>((flags >> flag) & 0x1), false);
-            //     };
-            //
-            //     AddFlagFromUint32("physicsFlag0", 0);
-            //     AddFlagFromUint32("physicsFlag1", 1);
-            //     AddFlagFromUint32("physicsFlag2", 2);
-            //     AddFlagFromUint32("physicsFlag3", 3);
-            //     AddFlagFromUint32("physicsFlag4", 4);
-            //     AddFlagFromUint32("physicsFlag5", 5);
-            //     AddFlagFromUint32("physicsFlag6", 6);
-            //     AddFlagFromUint32("physicsFlag7", 7);
-            //     AddFlagFromUint32("physicsFlag8", 8);
-            //     AddFlagFromUint32("physicsFlag9", 9);
-            //     AddFlagFromUint32("physicsFlag10", 10);
-            //     AddFlagFromUint32("physicsFlag11", 11);
-            //     AddFlagFromUint32("physicsFlag12", 12);
-            //     AddFlagFromUint32("physicsFlag13", 13);
-            //     AddFlagFromUint32("physicsFlag14", 14);
-            //     AddFlagFromUint32("physicsFlag15", 15);
-            //     AddFlagFromUint32("physicsFlag16", 16);
-            //     AddFlagFromUint32("physicsFlag17", 17);
-            //     AddFlagFromUint32("physicsFlag18", 18);
-            //     AddFlagFromUint32("physicsFlag19", 19);
-            //     AddFlagFromUint32("physicsFlag20", 20);
-            //     AddFlagFromUint32("physicsFlag21", 21);
-            //     AddFlagFromUint32("physicsFlag22", 22);
-            //     AddFlagFromUint32("physicsFlag23", 23);
-            //     AddFlagFromUint32("physicsFlag24", 24);
-            //     AddFlagFromUint32("physicsFlag25", 25);
-            //     AddFlagFromUint32("physicsFlag26", 26);
-            //     AddFlagFromUint32("physicsFlag27", 27);
-            //     AddFlagFromUint32("physicsFlag28", 28);
-            //     AddFlagFromUint32("physicsFlag29", 29);
-            //     AddFlagFromUint32("physicsFlag30", 30);
-            //     AddFlagFromUint32("physicsFlag31", 31);
-            // }
-
-
-            {
-                // show each bit of flags2
-                // uint32_t flags2 = getMemory<int32_t>(actorPtr + offsetof(ActorWiiU, flags2)).getLE();
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_0", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>(flags2 & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_1", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 1) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_2", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 2) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_3", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 3) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_4", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 4) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_5", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 5) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_6", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 6) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_7", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 7) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_8", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 8) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_9", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 9) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_10", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 10) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_11", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 11) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_12", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 12) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_13", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 13) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_14", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 14) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_15", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 15) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_16", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 16) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_17", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 17) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_18", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 18) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_19", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 19) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_20", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 20) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_21", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 21) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_22", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 22) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_23", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 23) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_24", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 24) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_25", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 25) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_26", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 26) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_27", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 27) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_28", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 28) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_29", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 29) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_30", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 30) & 0x1), false);
-                // overlay->AddOrUpdateEntity(actorId, actorName, "flags2_31", actorPtr + offsetof(ActorWiiU, flags2), BEType<uint8_t>((flags2 >> 31) & 0x1), false);
-            }
 
             addField.operator()<uint32_t>("hashId", offsetof(ActorWiiU, hashId));
             addMemoryRange("physics", actorPtr + offsetof(ActorWiiU, actorPhysicsPtr), 0xE0);
@@ -423,6 +425,7 @@ void CemuHooks::updateFrames() {
             }
         }
     }
+#endif
 }
 
 extern glm::fvec3 g_lookAtPos;
@@ -533,10 +536,9 @@ void CemuHooks::hook_changeWeaponMtx(PPCInterpreter_t* hCPU) {
 
         hCPU->gpr[9] = 1;
 
+#ifdef ENABLE_DEBUG_INSPECTOR
         auto& m_overlay = VRManager::instance().VK->m_imguiOverlay;
         if (m_overlay) {
-            // m_overlay->m_playerPos = playerMtx.getPos().getLE();
-
             m_overlay->AddOrUpdateEntity(1337, "PlayerHeldWeapons", isLeftHandWeapon ? "left_weapon_mtx" : "right_weapon_mtx", hCPU->gpr[5], weaponMtx);
             m_overlay->AddOrUpdateEntity(1337, "PlayerHeldWeapons", isLeftHandWeapon ? "left_player_mtx" : "right_player_mtx", hCPU->gpr[6], playerMtx);
             m_overlay->AddOrUpdateEntity(1337, "PlayerHeldWeapons", isLeftHandWeapon ? "left_ModelBindInfo_mtx" : "right_ModelBindInfo_mtx", hCPU->gpr[7], modelBindInfoMtx);
@@ -560,6 +562,7 @@ void CemuHooks::hook_changeWeaponMtx(PPCInterpreter_t* hCPU) {
                 }
             }
         }
+#endif
     }
 }
 
@@ -569,7 +572,7 @@ void CemuHooks::hook_modifyHandModelAccessSearch(PPCInterpreter_t* hCPU) {
     if (hCPU->gpr[3] == 0) {
         return;
     }
-
+#ifdef _DEBUG
     // r3 holds the address of the string to search for
     const char* actorName = (const char*)(s_memoryBaseAddress + hCPU->gpr[3]);
 
@@ -577,6 +580,7 @@ void CemuHooks::hook_modifyHandModelAccessSearch(PPCInterpreter_t* hCPU) {
         // Weapon_R is presumably his right hand bone name
         Log::print("Searching for model handle using {}", actorName);
     }
+#endif
 }
 
 void CemuHooks::hook_CreateNewActor(PPCInterpreter_t* hCPU) {
