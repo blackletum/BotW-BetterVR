@@ -170,7 +170,6 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
     glm::fvec3 eyePos = ToGLM(currPoseOpt.value().position);
     glm::fquat eyeRot = ToGLM(currPoseOpt.value().orientation);
 
-
     glm::vec3 newPos = basePos + (baseYaw * eyePos);
     glm::fquat newRot = baseYaw * eyeRot;
 
@@ -513,8 +512,19 @@ void CemuHooks::initCutsceneDefaultSettings(uint32_t ppc_TableOfCutsceneEventsSe
     Log::print<VERBOSE>("Initialized cutscene default settings for {} events.", s_eventSettings.size());
 }
 
+
+uint32_t CemuHooks::s_playerAddress = 0;
+
 void CemuHooks::hook_GetEventName(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
+
+    //if (s_playerAddress != 0) {
+    //    PlayerMoveBitFlags moveBits = getMemory<BEType<PlayerMoveBitFlags>>(s_playerAddress + offsetof(Player, moveBitFlags)).getLE();
+    //    if ((uint32_t)moveBits & (uint32_t)PlayerMoveBitFlags::EVENT_UNK_134217728 == 0) {
+    //        Log::print<INFO>("Cutscene camera is active, skipping event processing.");
+    //        //return;
+    //    }
+    //}
 
     uint32_t isEventActive = hCPU->gpr[3];
     if (isEventActive) {
@@ -544,7 +554,7 @@ void CemuHooks::hook_GetEventName(PPCInterpreter_t* hCPU) {
         // This can be read using the settings.demoEnableCameraInput in the HybridEventSettings struct.
     }
     else if (!s_currentEvent.empty()) {
-        //Log::print("!! There's no active event");
+        Log::print<INFO>("Event '{}' has now ended", s_currentEvent);
         s_currentEvent = "";
     }
 }

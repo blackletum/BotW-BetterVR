@@ -3,6 +3,10 @@ moduleMatches = 0x6267BFD0
 
 .origin = codecave
 
+; player move speed, doesn't affect gravity
+;0x101E55F8 = .float 3.0
+
+
 ; Disable jump button setting from in-game options
 ; todo: test whether this is actually working
 

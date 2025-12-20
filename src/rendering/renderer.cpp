@@ -432,7 +432,6 @@ std::vector<XrCompositionLayerQuad> RND_Renderer::Layer2D::FinishRendering(XrTim
     // todo: change space to head space if we want to follow the head
     constexpr float MENU_SIZE = 1.0f;
 
-
     std::vector<XrCompositionLayerQuad> layers;
 
     // clang-format off

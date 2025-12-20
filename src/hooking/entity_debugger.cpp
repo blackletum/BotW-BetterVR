@@ -55,6 +55,7 @@ void CemuHooks::hook_UpdateActorList(PPCInterpreter_t* hCPU) {
          readMemory(actorMtxPtr, &mtx);
          s_playerPos = mtx.getPos().getLE();
          s_playerMtxAddress = actorMtxPtr;
+         s_playerAddress = hCPU->gpr[6];
      }
      else if (strcmp(actorName, "GameRomCamera") == 0) {
          uint32_t actorMtxPtr = hCPU->gpr[6] + offsetof(ActorWiiU, mtx);

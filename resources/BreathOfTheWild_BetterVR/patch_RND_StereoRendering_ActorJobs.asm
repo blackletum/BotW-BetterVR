@@ -248,7 +248,7 @@ mr r0, r3
 
 lis r3, currentEyeSide@ha
 lwz r3, currentEyeSide@l(r3)
-cmpwi r3, 1
+cmpwi r3, 0
 bne .+0x0C ; don't early return if left eye
 mr r3, r0
 blr

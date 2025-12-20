@@ -15,8 +15,8 @@ public:
 
     struct RenderFrame {
         std::optional<std::array<XrView, 2>> views;
-        std::array<std::atomic_bool, 2> copiedColor = { false, false };
-        std::array<std::atomic_bool, 2> copiedDepth = { false, false };
+        std::atomic_bool copiedColor[2] = { false, false };
+        std::atomic_bool copiedDepth[2] = { false, false };
         std::atomic_bool copied2D = false;
         std::atomic_bool presented3D = false;
 
@@ -29,6 +29,8 @@ public:
         VkDescriptorSet hudWithoutAlphaFramebufferDS = VK_NULL_HANDLE;
         float mainFramebufferAspectRatio = 1.0f;
 
+        bool ranMotionAnalysis[2] = { false, false };
+
         bool Is3DComplete() const { return copiedColor[0] && copiedColor[1] && copiedDepth[0] && copiedDepth[1]; }
         bool Is2DComplete() const { return copied2D; }
 
@@ -39,6 +41,9 @@ public:
             copiedDepth[0] = false;
             copiedDepth[1] = false;
             copied2D = false;
+
+            ranMotionAnalysis[0] = false;
+            ranMotionAnalysis[1] = false;
         }
     };
 

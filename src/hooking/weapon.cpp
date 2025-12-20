@@ -16,59 +16,6 @@ std::array s_cameraPositions = {
     glm::fvec3(0.0f)
 };
 
-static void ModifyWeaponMtxToVRPose(OpenXR::EyeSide side, BEMatrix34& toBeAdjustedMtx, glm::fquat cameraRotation, glm::fvec3 cameraPosition) {
-    OpenXR::InputState inputs = VRManager::instance().XR->m_input.load();
-
-    glm::fvec3 views = glm::fvec3(0, 0, 0);
-
-    glm::fvec3 controllerPos = glm::fvec3(0.0f);
-    glm::fquat controllerQuat = glm::identity<glm::fquat>();
-
-    if (inputs.inGame.in_game && inputs.inGame.pose[side].isActive) {
-        auto& handPose = inputs.inGame.poseLocation[side];
-
-        if (handPose.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) {
-            controllerPos = ToGLM(handPose.pose.position);
-        }
-        if (handPose.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) {
-            controllerQuat = ToGLM(handPose.pose.orientation);
-        }
-    }
-
-    // Calculate the rotation
-    glm::fquat rotatedControllerQuat = glm::normalize(cameraRotation * controllerQuat);
-
-    glm::fvec3 v_controller = cameraRotation * controllerPos;
-    glm::fvec3 v_cam = cameraRotation * views;
-    glm::fvec3 v_controller_local = v_controller - v_cam;
-
-    rotatedControllerQuat = glm::rotate(rotatedControllerQuat, glm::radians(180.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
-    rotatedControllerQuat = glm::rotate(rotatedControllerQuat, glm::radians(180.0f), glm::fvec3(0.0f, 0.0f, 1.0f));
-    glm::fmat3 finalMtx = glm::mat3_cast(glm::inverse(rotatedControllerQuat) * glm::inverse(VRManager::instance().XR->m_inputCameraRotation.load()));
-
-    toBeAdjustedMtx.x_x = finalMtx[0][0];
-    toBeAdjustedMtx.y_x = finalMtx[0][1];
-    toBeAdjustedMtx.z_x = finalMtx[0][2];
-
-    toBeAdjustedMtx.x_y = finalMtx[1][0];
-    toBeAdjustedMtx.y_y = finalMtx[1][1];
-    toBeAdjustedMtx.z_y = finalMtx[1][2];
-
-    toBeAdjustedMtx.x_z = finalMtx[2][0];
-    toBeAdjustedMtx.y_z = finalMtx[2][1];
-    toBeAdjustedMtx.z_z = finalMtx[2][2];
-
-    glm::fvec3 rotatedControllerPos = v_controller_local * glm::inverse(VRManager::instance().XR->m_inputCameraRotation.load()) + v_cam;
-    glm::fvec3 finalPos = cameraPosition + rotatedControllerPos;
-
-    //Log::print("!! camera pos = {} rotation = {}", finalPos, views);
-    //finalPos = v_cam + glm::fvec3(0, 1, 0);
-
-    toBeAdjustedMtx.pos_x = finalPos.x;
-    toBeAdjustedMtx.pos_y = finalPos.y;
-    toBeAdjustedMtx.pos_z = finalPos.z;
-}
-
 void CemuHooks::hook_ChangeWeaponMtx(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
@@ -235,12 +182,12 @@ void CemuHooks::hook_GetContactLayerOfAttack(PPCInterpreter_t* hCPU) {
     uint32_t contactLayerValue = hCPU->gpr[3];
 
     // hardcoded 0!!!
-    if (m_motionAnalyzers[0].IsAttacking()) {
-        contactLayerValue = (uint32_t)ContactLayer::SensorAttackPlayer;
-    }
-    else {
-        //contactLayerValue = (uint32_t)ContactLayer::SensorChemical;
-    }
+    //if (m_motionAnalyzers[0].IsAttacking()) {
+    //    contactLayerValue = (uint32_t)ContactLayer::SensorAttackPlayer;
+    //}
+    //else {
+    //    //contactLayerValue = (uint32_t)ContactLayer::SensorChemical;
+    //}
 
 
     //for (uint32_t i = 0; i < contactLayerNames.size(); i++) {
@@ -257,17 +204,11 @@ void CemuHooks::hook_GetContactLayerOfAttack(PPCInterpreter_t* hCPU) {
 }
 
 
-uint32_t frameIndex = 0;
-
 void CemuHooks::hook_EnableWeaponAttackSensor(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
-    if (GetSettings().IsThirdPersonMode()) {
-        return;
-    }
 
-    frameIndex++;
-    if (frameIndex % 2 == 0) {
+    if (GetSettings().IsThirdPersonMode()) {
         return;
     }
 
@@ -275,13 +216,14 @@ void CemuHooks::hook_EnableWeaponAttackSensor(PPCInterpreter_t* hCPU) {
     uint32_t parentActorPtr = hCPU->gpr[4];
     uint32_t heldIndex = hCPU->gpr[5]; // this is either 0 or 1 depending on which hand the weapon is in
     bool isHeldByPlayer = hCPU->gpr[6] == 0;
+    uint32_t frameCounter = hCPU->gpr[7];
 
     Weapon weapon = {};
     readMemory(weaponPtr, &weapon);
 
     WeaponType weaponType = weapon.type.getLE();
     if (weaponType == WeaponType::Bow || weaponType == WeaponType::Shield) {
-        //Log::print("!! Skipping motion analysis for Bow/Shield (type: {})", (int)weaponType);
+        //Log::print<INFO>("Skipping motion analysis for Bow/Shield (type: {}): {}", (int)weaponType, weapon.name.getLE());
         return;
     }
 
@@ -289,6 +231,13 @@ void CemuHooks::hook_EnableWeaponAttackSensor(PPCInterpreter_t* hCPU) {
         Log::print<CONTROLS>("Invalid heldIndex: {}. Skipping motion analysis.", heldIndex);
         return;
     }
+
+    auto& currFrame = VRManager::instance().XR->GetRenderer()->GetFrame(frameCounter);
+    if (currFrame.ranMotionAnalysis[heldIndex]) {
+        Log::print<CONTROLS>("Skipping motion analysis for {}: already ran this frame", heldIndex);
+        return;
+    }
+    currFrame.ranMotionAnalysis[heldIndex] = true;
 
     heldIndex = heldIndex == 0 ? 1 : 0;
 
@@ -305,7 +254,7 @@ void CemuHooks::hook_EnableWeaponAttackSensor(PPCInterpreter_t* hCPU) {
     m_motionAnalyzers[heldIndex].Update(state.inGame.poseLocation[heldIndex], state.inGame.poseVelocity[heldIndex], headset.value(), state.inGame.inputTime);
 
     // Use the analysed motion to determine whether the weapon is swinging or stabbing, and whether the attackSensor should be active this frame
-    bool CHEAT_alwaysEnableWeaponCollision = false;
+    bool CHEAT_alwaysEnableWeaponCollision = true;
     if (isHeldByPlayer && (m_motionAnalyzers[heldIndex].IsAttacking() || CHEAT_alwaysEnableWeaponCollision)) {
         m_motionAnalyzers[heldIndex].SetHitboxEnabled(true);
         //Log::print("!! Activate sensor for {}: isHeldByPlayer={}, weaponType={}", heldIndex, isHeldByPlayer, (int)weaponType);

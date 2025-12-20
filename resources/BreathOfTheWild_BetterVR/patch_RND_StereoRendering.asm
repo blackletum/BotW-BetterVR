@@ -227,7 +227,7 @@ beq continueWithRendering
 ; stall for a bit to let loading screen finish
 mr r11, r4
 li r3, 0
-li r4, 1337
+li r4, 200
 bla import.coreinit.OSSleepTicks
 mr r4, r11
 

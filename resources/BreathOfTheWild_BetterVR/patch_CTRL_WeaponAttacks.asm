@@ -169,6 +169,8 @@ b exit_hook_enableWeaponAttack
 
 ; check if weapon should have its attack sensor enabled
 checkAndEnableWeaponAttackSensor:
+lis r7, currentFrameCounter@ha
+lwz r7, currentFrameCounter@l(r7)
 bla import.coreinit.hook_EnableWeaponAttackSensor
 b exit_hook_enableWeaponAttack
 
@@ -197,7 +199,7 @@ blr
 ; 0x024AA848 = li r9, 1 ; Weapon::doAttachMaybe_inner0_0 -> if ( !Weapon->weaponInner4.weaponInner4Inner.setContactLayer ) is always true
 
 activateAttackSensor_formatString:
-.string "! ActiveAttackSensor( type = %u, attr = %08X, power = %f, impulse = %f, powerReduce = %f, weaponParams = %08X, shieldBreakPower = %u, powerForPlayer = %u )"
+.string "ActiveAttackSensor( type = %u, attr = %08X, power = %f, impulse = %f, powerReduce = %f, weaponParams = %08X, shieldBreakPower = %u, powerForPlayer = %u )"
 
 custom_activateAttackSensor:
 ; === original function ===
@@ -252,7 +254,7 @@ lwz r9, 0x30(r3)
 ; r10 = powerForPlayer
 lwz r10, 0x34(r3)
 
-;bl printToCemuConsoleWithFormat
+bl printToCemuConsoleWithFormat
 
 lfs f1, 0x2C(r1)
 lfs f2, 0x28(r1)
