@@ -38,6 +38,8 @@ public:
     std::unique_ptr<RND_Vulkan> VK;
     std::unique_ptr<CemuHooks> Hooks;
 
+    uint32_t vkVersion = 0;
+
 private:
     VRManager() {
         m_logger = std::make_unique<Log>();

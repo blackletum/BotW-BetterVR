@@ -31,6 +31,8 @@ VkResult VRLayer::VkInstanceOverrides::CreateInstance(PFN_vkCreateInstance creat
 
     VkResult result = createInstanceFunc(pCreateInfo, pAllocator, pInstance);
 
+    VRManager::instance().vkVersion = pCreateInfo->pApplicationInfo->apiVersion;
+
     Log::print<INFO>("Created Vulkan instance (using Vulkan {}.{}.{}) successfully!", VK_API_VERSION_MAJOR(pCreateInfo->pApplicationInfo->apiVersion), VK_API_VERSION_MINOR(pCreateInfo->pApplicationInfo->apiVersion), VK_API_VERSION_PATCH(pCreateInfo->pApplicationInfo->apiVersion));
     checkAssert(VK_VERSION_MINOR(pCreateInfo->pApplicationInfo->apiVersion) != 0 || VK_VERSION_MAJOR(pCreateInfo->pApplicationInfo->apiVersion) > 1, "Vulkan version needs to be v1.1 or higher!");
     return result;

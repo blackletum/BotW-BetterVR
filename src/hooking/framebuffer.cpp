@@ -180,7 +180,7 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
                         VulkanUtils::TransitionLayout(commandBuffer, image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
                     }
 
-                    if (!hudCopied) {
+                    if (imguiOverlay && !hudCopied) {
                         // render imgui, and then copy the framebuffer to the 2D layer
                         imguiOverlay->BeginFrame(frameIdx, false);
                         imguiOverlay->Update();
@@ -193,6 +193,8 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
                     // copy the HUD texture to D3D12 to be presented
                     // only copy the first attempt at capturing when GX2ClearColor is called with this capture index since the game/Cemu clears the 2D layer twice
                     SharedTexture* texture = layer2D->CopyColorToLayer(commandBuffer, image, frameIdx);
+                    VulkanUtils::DebugPipelineBarrier(commandBuffer);
+                    VulkanUtils::TransitionLayout(commandBuffer, image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
                     renderer->On2DCopied(frameIdx);
                     s_activeCopyOperations.emplace_back(commandBuffer, texture);
                 }

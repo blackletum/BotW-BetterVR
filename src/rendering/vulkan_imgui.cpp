@@ -83,7 +83,7 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, uint32_t width, uin
     ImGui::GetIO().DisplaySize = ImVec2((float)width, (float)height);
 
     // load vulkan functions
-    checkAssert(ImGui_ImplVulkan_LoadFunctions([](const char* funcName, void* data_queue) {
+    checkAssert(ImGui_ImplVulkan_LoadFunctions(VRManager::instance().vkVersion, [](const char* funcName, void* data_queue) {
         VkDevice device = VRManager::instance().VK->GetDevice();
         PFN_vkVoidFunction addr = VRManager::instance().VK->GetDeviceDispatch()->GetDeviceProcAddr(device, funcName);
 
@@ -110,8 +110,8 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, uint32_t width, uin
         .Queue = queue,
         .DescriptorPool = m_descriptorPool,
         .RenderPass = m_renderPass,
-        .MinImageCount = 2,
-        .ImageCount = 2,
+        .MinImageCount = 6,
+        .ImageCount = 6,
         .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
 
         .UseDynamicRendering = false,
@@ -128,7 +128,7 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, uint32_t width, uin
     }
 
     Log::print<VERBOSE>("Initializing font textures for ImGui...");
-    ImGui_ImplVulkan_CreateFontsTexture(cb);
+    ImGui_ImplVulkan_CreateFontsTexture();
 
     // find HWND that starts with Cemu in its title
     struct EnumWindowsData {
@@ -246,13 +246,13 @@ void RND_Renderer::ImGuiOverlay::BeginFrame(long frameIdx, bool renderBackground
     auto& frame = renderer->GetFrame(frameIdx);
 
     if (frame.mainFramebufferDS == VK_NULL_HANDLE) {
-        frame.mainFramebufferDS = ImGui_ImplVulkan_AddTexture(m_sampler, frame.mainFramebuffer->GetImageView(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        frame.mainFramebufferDS = ImGui_ImplVulkan_AddTexture(m_sampler, frame.mainFramebuffer->GetImageView(), VK_IMAGE_LAYOUT_GENERAL);
     }
     if (frame.hudFramebufferDS == VK_NULL_HANDLE) {
-        frame.hudFramebufferDS = ImGui_ImplVulkan_AddTexture(m_sampler, frame.hudFramebuffer->GetImageView(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        frame.hudFramebufferDS = ImGui_ImplVulkan_AddTexture(m_sampler, frame.hudFramebuffer->GetImageView(), VK_IMAGE_LAYOUT_GENERAL);
     }
     if (frame.hudWithoutAlphaFramebufferDS == VK_NULL_HANDLE) {
-        frame.hudWithoutAlphaFramebufferDS = ImGui_ImplVulkan_AddTexture(m_sampler, frame.hudWithoutAlphaFramebuffer->GetImageView(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        frame.hudWithoutAlphaFramebufferDS = ImGui_ImplVulkan_AddTexture(m_sampler, frame.hudWithoutAlphaFramebuffer->GetImageView(), VK_IMAGE_LAYOUT_GENERAL);
     }
 
     if (renderBackground || CemuHooks::UseBlackBarsDuringEvents()) {
@@ -362,7 +362,7 @@ void RND_Renderer::ImGuiOverlay::Draw3DLayerAsBackground(VkCommandBuffer cb, VkI
     frame.mainFramebuffer->vkCopyFromImage(cb, srcImage);
     
     frame.mainFramebuffer->vkPipelineBarrier(cb);
-    frame.mainFramebuffer->vkTransitionLayout(cb, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    frame.mainFramebuffer->vkTransitionLayout(cb, VK_IMAGE_LAYOUT_GENERAL);
 
     frame.mainFramebufferAspectRatio = aspectRatio;
 }
