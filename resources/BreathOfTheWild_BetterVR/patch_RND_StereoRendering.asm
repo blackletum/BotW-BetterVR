@@ -21,6 +21,7 @@ currentEyeSide:
 currentFrameCounter:
 .int 0
 
+0x10463EB0 = FadeProgress__sInstance:
 0x031FB1B4 = sub_31FB1B4_getTimeForGameUpdateMaybe:
 0x0309F72C = sead_GameFramework_lockFrameDrawContext:
 0x0309F744 = sead_GameFramework_unlockFrameDrawContext:
@@ -152,8 +153,29 @@ bctrl ; sead__GameFrameworkCafe__procDraw
 ; note: doesn't seem to be necessary
 ;bl import.gx2.GX2DrawDone
 
+stallDuringLoadingScreens_one:
+lis r3, FadeProgress__sInstance@ha
+lwz r3, FadeProgress__sInstance@l(r3)
+cmpwi r3, 0
+beq skipStallDuringLoadingScreens_one
+
+lbz r3, 0x10(r3)
+cmpwi r3, 0
+beq skipStallDuringLoadingScreens_one
+
+mr r11, r4
+li r3, 0
+li r4, 100
+bla import.coreinit.OSSleepTicks
+mr r4, r11
+
+; also use gx2drawdone during loading screens to ensure rendering is done
+bl import.gx2.GX2DrawDone
+skipStallDuringLoadingScreens_one:
+
 li r3, 0
 bl import.coreinit.hook_EndCameraSide
+
 
 li r0, 1
 lis r12, currentEyeSide@ha
@@ -212,24 +234,25 @@ loc_31FA95C:
 ; ========================================================================
 ; ========================================================================
 
-stallTemporarilyDuringLoadingScreens:
-0x10463EB0 = FadeProgress__sInstance:
-
+stallDuringLoadingScreens_two:
 lis r3, FadeProgress__sInstance@ha
 lwz r3, FadeProgress__sInstance@l(r3)
 cmpwi r3, 0
-beq continueWithRendering
+beq skipStallDuringLoadingScreens_two
 
 lbz r3, 0x10(r3)
 cmpwi r3, 0
-beq continueWithRendering
+beq skipStallDuringLoadingScreens_two
 
-; stall for a bit to let loading screen finish
 mr r11, r4
 li r3, 0
-li r4, 200
+li r4, 100
 bla import.coreinit.OSSleepTicks
 mr r4, r11
+
+; also use gx2drawdone during loading screens to ensure rendering is done
+bl import.gx2.GX2DrawDone
+skipStallDuringLoadingScreens_two:
 
 continueWithRendering:
 ; regular continue code below
@@ -836,4 +859,4 @@ mtlr r0
 addi r1, r1, 0x20
 blr
 
-0x030C1008 = ba custom_sead__Projection__getProjectionMatrix
+;0x030C1008 = ba custom_sead__Projection__getProjectionMatrix
