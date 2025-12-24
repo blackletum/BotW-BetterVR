@@ -58,6 +58,51 @@ addi r1, r1, 0x10
 mtlr r0
 blr
 
+; use GX2WaitTimeStamp(GX2GetLastSubmittedTimeStamp()) to prevent GPU from being bad
+storedTimestamp:
+.int 0
+.int 0
+
+storeLastSubmittedTimeStamp:
+mflr r0
+stwu r1, -0x10(r1)
+stw r0, 0x14(r1)
+stw r3, 0x0C(r1)
+stw r4, 0x08(r1)
+
+bl import.gx2.GX2GetLastSubmittedTimeStamp
+lis r12, storedTimestamp@ha
+addi r12, r12, storedTimestamp@l
+stw r3, 0(r12)
+stw r4, 4(r12)
+
+lwz r0, 0x14(r1)
+lwz r3, 0x0C(r1)
+lwz r4, 0x08(r1)
+mtlr r0
+addi r1, r1, 0x10
+blr
+
+waitForLastSubmittedTimeStamp:
+mflr r0
+stwu r1, -0x10(r1)
+stw r0, 0x14(r1)
+stw r3, 0x0C(r1)
+stw r4, 0x08(r1)
+
+lis r12, storedTimestamp@ha
+addi r12, r12, storedTimestamp@l
+lwz r3, 0(r12)
+lwz r4, 4(r12)
+bl import.gx2.GX2WaitTimeStamp
+
+lwz r0, 0x14(r1)
+lwz r3, 0x0C(r1)
+lwz r4, 0x08(r1)
+mtlr r0
+addi r1, r1, 0x10
+blr
+
 custom_sead_GameFramework_procFrame:
 mflr r0
 stwu r1, -0x10(r1)
@@ -151,6 +196,8 @@ mr r3, r30
 bctrl ; sead__GameFrameworkCafe__procDraw
 
 ; note: doesn't seem to be necessary
+bl storeLastSubmittedTimeStamp
+bl waitForLastSubmittedTimeStamp
 ;bl import.gx2.GX2DrawDone
 
 stallDuringLoadingScreens_one:
