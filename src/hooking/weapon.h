@@ -63,7 +63,7 @@ struct SpearProfile : WeaponProfile {
         stab_AngularSteadinessThreshold = glm::pi<float>() / 18; // [rad] Use 10 deg cone
         stab_travelDistance = 0.3f;
 
-        slash_LinearSpeedThreshold = 2.5f;
+        slash_LinearSpeedThreshold = 1.5f;
         slash_AngularSpeedThreshold = 1.0f;
         slash_AngularAccThreshold = 7.0f;
         slash_SteadinessThreshold = glm::cos(glm::pi<float>() / 4); // 45 deg | portion of direction vector of normalized angular velocity pointed in the right direction
@@ -179,7 +179,7 @@ public:
         profile.slash_AngularSpeedThreshold = 1.0f;
         profile.slash_AngularAccThreshold = 7.0f;
         profile.slash_AccDriftThreshold = 10.0f; // use [rad/s^2]
-        COOLDOWN_TIME = 1e9 * 0.15f; // TODO: DIFFERENT COOLDOWN FOR STABS AND SWINGS
+        COOLDOWN_TIME = 1e9 * 0.1f; // TODO: DIFFERENT COOLDOWN FOR STABS AND SWINGS
 
         //Log::print("!! steadiness: {} / {}", glm::normalize(localAngularVelocity).y, profile.slash_SteadinessThreshold);
         profile.slash_travelAngle = glm::pi<float>() / 6;
