@@ -1,5 +1,8 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions DisableDelayedExpansion
+
+rem Handle UTF-8 characters
+chcp 65001 >nul
 
 cd /d "%~dp0"
 set "CEMU_DIR=%CD%"
@@ -21,17 +24,25 @@ rem Decide target(s) using same precedence as installer
 set "MODE="
 set "TARGET_BASE="
 
-if exist "%CEMU_DIR%\portable\" (
-  set "MODE=portable"
-  set "TARGET_BASE=%CEMU_DIR%\portable\graphicPacks"
-) else if exist "%CEMU_DIR%\settings.xml" (
-  set "MODE=settings.xml"
-  set "TARGET_BASE=%CEMU_DIR%\graphicPacks"
-) else (
-  set "MODE=appdata"
-  set "TARGET_BASE=%APPDATA%\Cemu\graphicPacks"
-)
+if exist "%CEMU_DIR%\portable\" goto SetPortable
+if exist "%CEMU_DIR%\settings.xml" goto SetSettings
+goto SetAppData
 
+:SetPortable
+set "MODE=portable"
+set "TARGET_BASE=%CEMU_DIR%\portable\graphicPacks"
+goto ModeDone
+
+:SetSettings
+set "MODE=settings.xml"
+set "TARGET_BASE=%CEMU_DIR%\graphicPacks"
+goto ModeDone
+
+:SetAppData
+set "MODE=appdata"
+set "TARGET_BASE=%APPDATA%\Cemu\graphicPacks"
+
+:ModeDone
 call :Log "Mode: %MODE%"
 call :Log "Primary target base: %TARGET_BASE%"
 
@@ -48,52 +59,57 @@ if "%STATUS%"=="1" (
   call :Log "INFO: Uninstall complete (moved back)."
   call :Popup "BreathOfTheWild_BetterVR moved back to Cemu folder." "BetterVR Uninstaller"
   exit /b 0
-) else if "%STATUS%"=="2" (
+)
+
+if "%STATUS%"=="2" (
   call :Log "INFO: Uninstall complete (removed old version)."
   call :Popup "Old BreathOfTheWild_BetterVR removed. (A folder with that name already exists next to Cemu, so we kept it.)" "BetterVR Uninstaller"
   exit /b 0
-) else (
-  call :Log "WARN: Pack not found in any known graphicPacks location."
-  call :Popup "BreathOfTheWild_BetterVR was not found in any known graphicPacks folder." "BetterVR Uninstaller"
-  exit /b 2
 )
 
+call :Log "WARN: Pack not found in any known graphicPacks location."
+call :Popup "BreathOfTheWild_BetterVR was not found in any known graphicPacks folder." "BetterVR Uninstaller"
+exit /b 2
 
 :MoveBackIfExists
 set "SRC=%~1"
-if exist "%SRC%\" (
-  if not "!STATUS!"=="0" (
-    call :Log "INFO: Found duplicate at '%SRC%', deleting."
-    rmdir /s /q "%SRC%" 2>nul
-  ) else (
-    if exist "%DEST_BACK%\" (
-      call :Log "INFO: Destination '%DEST_BACK%' already exists. Assuming it is a new version. Deleting installed pack '%SRC%'."
-      rmdir /s /q "%SRC%" 2>nul
-      set "STATUS=2"
-    ) else (
-      call :Log "INFO: Moving '%SRC%' back to '%DEST_BACK%'"
-      move "%SRC%" "%DEST_BACK%" >nul 2>&1
-      if not errorlevel 1 (
-        set "STATUS=1"
-        call :Log "INFO: Move successful."
-      ) else (
-        call :Log "WARN: 'move' command failed. Trying robocopy /MOVE."
-        robocopy "%SRC%" "%DEST_BACK%" /E /MOVE /R:0 /W:0 /V >nul 2>&1
-        if not exist "%SRC%\" (
-          set "STATUS=1"
-          call :Log "INFO: Robocopy move successful."
-        ) else (
-          call :Log "ERROR: Failed to move pack back."
-        )
-      )
-    )
-  )
-)
+if not exist "%SRC%\" goto MoveBackEnd
+
+if "%STATUS%"=="0" goto MoveBackAction
+call :Log "INFO: Found duplicate at '%SRC%', deleting."
+rmdir /s /q "%SRC%" 2>nul
+goto MoveBackEnd
+
+:MoveBackAction
+if not exist "%DEST_BACK%\" goto MoveBackPerform
+call :Log "INFO: Destination '%DEST_BACK%' already exists. Assuming it is a new version. Deleting installed pack '%SRC%'."
+rmdir /s /q "%SRC%" 2>nul
+set "STATUS=2"
+goto MoveBackEnd
+
+:MoveBackPerform
+call :Log "INFO: Moving '%SRC%' back to '%DEST_BACK%'"
+move "%SRC%" "%DEST_BACK%" >nul 2>&1
+if not errorlevel 1 goto MoveBackSuccess
+
+call :Log "WARN: 'move' command failed. Trying robocopy /MOVE."
+robocopy "%SRC%" "%DEST_BACK%" /E /MOVE /R:0 /W:0 /V >nul 2>&1
+if exist "%SRC%\" goto MoveBackFail
+
+:MoveBackSuccess
+set "STATUS=1"
+call :Log "INFO: Move/Robocopy successful."
+goto MoveBackEnd
+
+:MoveBackFail
+call :Log "ERROR: Failed to move pack back."
+
+:MoveBackEnd
 exit /b
 
 
 :Log
->>"%LOG%" echo [%DATE% %TIME%] %~1
+>>"%LOG%" echo [%DATE% %TIME%] %1
 exit /b
 
 
