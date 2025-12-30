@@ -8,7 +8,7 @@ Log::Log() {
     consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 #ifdef _DEBUG
 #else
-    logFile.open("BetterVR.log", std::ios::out | std::ios::trunc);
+    logFile.open("BetterVR.txt", std::ios::out | std::ios::trunc);
 #endif
     Log::print<INFO>("Successfully started BetterVR!");
     LARGE_INTEGER timeLI;
