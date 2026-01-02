@@ -64,6 +64,7 @@ public:
         osLib_registerHLEFunction("coreinit", "hook_ModifyHandModelAccessSearch", &hook_ModifyHandModelAccessSearch);
         osLib_registerHLEFunction("coreinit", "hook_CreateNewScreen", &hook_CreateNewScreen);
         osLib_registerHLEFunction("coreinit", "hook_RouteActorJob", &hook_RouteActorJob);
+        osLib_registerHLEFunction("coreinit", "hook_FixLadder", &hook_FixLadder);
     };
     ~CemuHooks() {
         FreeLibrary(m_cemuHandle);
@@ -207,6 +208,7 @@ private:
     static void hook_GetEventName(PPCInterpreter_t* hCPU);
     static void hook_OverwriteCameraParam(PPCInterpreter_t* hCPU);
     static void hook_PlayerLadderFix(PPCInterpreter_t* hCPU);
+    static void hook_FixLadder(PPCInterpreter_t* hCPU);
 
     // First-Person Model Hooks
     static void hook_SetActorOpacity(PPCInterpreter_t* hCPU);
