@@ -41,7 +41,7 @@ public:
             XrActionStateVector2f move;
 
             XrActionStateBoolean jump;
-            XrActionStateBoolean crouch;
+            XrActionStateBoolean crouchAndScope;
             XrActionStateBoolean run;
             XrActionStateBoolean attack;
             XrActionStateBoolean useRune;
@@ -160,7 +160,7 @@ private:
     XrAction m_grabAction = XR_NULL_HANDLE;
     
     XrAction m_jumpAction = XR_NULL_HANDLE;
-    XrAction m_crouchAction = XR_NULL_HANDLE;
+    XrAction m_crouchAndScopeAction = XR_NULL_HANDLE;
     XrAction m_runAction = XR_NULL_HANDLE;
     XrAction m_attackAction = XR_NULL_HANDLE;
     XrAction m_useRuneAction = XR_NULL_HANDLE;

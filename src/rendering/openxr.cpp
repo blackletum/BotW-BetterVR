@@ -224,7 +224,7 @@ void OpenXR::CreateActions() {
         createAction(m_gameplayActionSet, "grab", "Grab", XR_ACTION_TYPE_FLOAT_INPUT, m_grabAction);
         createAction(m_gameplayActionSet, "interact", "Interact/Action (A Button)", XR_ACTION_TYPE_BOOLEAN_INPUT, m_interactAction);
         createAction(m_gameplayActionSet, "jump", "Jump (X Button)", XR_ACTION_TYPE_BOOLEAN_INPUT, m_jumpAction);
-        createAction(m_gameplayActionSet, "crouch", "Crouch (Left Thumbstick Button)", XR_ACTION_TYPE_BOOLEAN_INPUT, m_crouchAction);
+        createAction(m_gameplayActionSet, "crouchandscope", "Crouch or Scope (Left Thumbstick Button)", XR_ACTION_TYPE_BOOLEAN_INPUT, m_crouchAndScopeAction);
         createAction(m_gameplayActionSet, "run", "Run (B Button)", XR_ACTION_TYPE_BOOLEAN_INPUT, m_runAction);
         createAction(m_gameplayActionSet, "use_rune", "Use Rune (Left Bumper)", XR_ACTION_TYPE_BOOLEAN_INPUT, m_useRuneAction);
         createAction(m_gameplayActionSet, "throw_weapon", "Throw Weapon (Right Bumper)", XR_ACTION_TYPE_BOOLEAN_INPUT, m_throwWeaponAction);
@@ -305,7 +305,7 @@ void OpenXR::CreateActions() {
             XrActionSuggestedBinding{ .action = m_cancelAction, .binding = GetXRPath("/user/hand/right/input/a/click") },
 
             XrActionSuggestedBinding{ .action = m_jumpAction, .binding = GetXRPath("/user/hand/right/input/b/click") },
-            XrActionSuggestedBinding{ .action = m_crouchAction, .binding = GetXRPath("/user/hand/left/input/thumbstick/click") },
+            XrActionSuggestedBinding{ .action = m_crouchAndScopeAction, .binding = GetXRPath("/user/hand/left/input/thumbstick/click") },
             XrActionSuggestedBinding{ .action = m_runAction, .binding = GetXRPath("/user/hand/right/input/a/click") },
             XrActionSuggestedBinding{ .action = m_attackAction, .binding = GetXRPath("/user/hand/left/input/x/click") },
             XrActionSuggestedBinding{ .action = m_useRuneAction, .binding = GetXRPath("/user/hand/left/input/y/click") },
@@ -356,7 +356,7 @@ void OpenXR::CreateActions() {
             XrActionSuggestedBinding{ .action = m_cancelAction, .binding = GetXRPath("/user/hand/right/input/a/click") },
 
             XrActionSuggestedBinding{ .action = m_jumpAction, .binding = GetXRPath("/user/hand/right/input/b/click") },
-            XrActionSuggestedBinding{ .action = m_crouchAction, .binding = GetXRPath("/user/hand/left/input/thumbstick/click") },
+            XrActionSuggestedBinding{ .action = m_crouchAndScopeAction, .binding = GetXRPath("/user/hand/left/input/thumbstick/click") },
             XrActionSuggestedBinding{ .action = m_runAction, .binding = GetXRPath("/user/hand/right/input/a/click") },
             XrActionSuggestedBinding{ .action = m_attackAction, .binding = GetXRPath("/user/hand/left/input/a/click") },
             XrActionSuggestedBinding{ .action = m_useRuneAction, .binding = GetXRPath("/user/hand/left/input/b/click") },
@@ -652,10 +652,17 @@ std::optional<OpenXR::InputState> OpenXR::UpdateActions(XrTime predictedFrameTim
         checkXRResult(xrGetActionStateBoolean(m_session, &getJumpInfo, &newState.inGame.jump), "Failed to get jump action value!");
 
         XrActionStateGetInfo getCrouchInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
-        getCrouchInfo.action = m_crouchAction;
+        getCrouchInfo.action = m_crouchAndScopeAction;
         getCrouchInfo.subactionPath = XR_NULL_PATH;
-        newState.inGame.crouch = { XR_TYPE_ACTION_STATE_BOOLEAN };
-        checkXRResult(xrGetActionStateBoolean(m_session, &getCrouchInfo, &newState.inGame.crouch), "Failed to get crouch action value!");
+        newState.inGame.crouchAndScope = { XR_TYPE_ACTION_STATE_BOOLEAN };
+        checkXRResult(xrGetActionStateBoolean(m_session, &getCrouchInfo, &newState.inGame.crouchAndScope), "Failed to get crouch action value!");
+
+        auto& crouchAndScopeAction = newState.inGame.crouchAndScope;
+        auto& crouchAndScopeButtonState = newState.inGame.crouchAndScopeState;
+        if (crouchAndScopeAction.isActive == XR_TRUE) {
+            auto buttonPressed = crouchAndScopeAction.currentState == XR_TRUE;
+            CheckButtonState(buttonPressed, crouchAndScopeButtonState);
+        }
 
         XrActionStateGetInfo getRunInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
         getRunInfo.action = m_runAction;
