@@ -27,19 +27,21 @@ public:
         osLib_registerHLEFunction("coreinit", "hook_UpdateActorList", &hook_UpdateActorList);
         osLib_registerHLEFunction("coreinit", "hook_CreateNewActor", &hook_CreateNewActor);
 
-        // Camera Hooks
+        // Stereo Rendering/Camera Hooks
         osLib_registerHLEFunction("coreinit", "hook_BeginCameraSide", &hook_BeginCameraSide);
         osLib_registerHLEFunction("coreinit", "hook_ModifyLightPrePassProjectionMatrix", &hook_ModifyLightPrePassProjectionMatrix);
         osLib_registerHLEFunction("coreinit", "hook_UpdateCameraForGameplay", &hook_UpdateCameraForGameplay);
         osLib_registerHLEFunction("coreinit", "hook_GetRenderCamera", &hook_GetRenderCamera);
         osLib_registerHLEFunction("coreinit", "hook_GetRenderProjection", &hook_GetRenderProjection);
         osLib_registerHLEFunction("coreinit", "hook_EndCameraSide", &hook_EndCameraSide);
+        osLib_registerHLEFunction("coreinit", "hook_RouteActorJob", &hook_RouteActorJob);
 
         osLib_registerHLEFunction("coreinit", "hook_UseCameraDistance", &hook_UseCameraDistance);
         osLib_registerHLEFunction("coreinit", "hook_ReplaceCameraMode", &hook_ReplaceCameraMode);
         osLib_registerHLEFunction("coreinit", "hook_GetEventName", &hook_GetEventName);
         osLib_registerHLEFunction("coreinit", "hook_OverwriteCameraParam", &hook_OverwriteCameraParam);
         osLib_registerHLEFunction("coreinit", "hook_PlayerLadderFix", &hook_PlayerLadderFix);
+        osLib_registerHLEFunction("coreinit", "hook_PlayerIsRiding", &hook_PlayerIsRiding);
 
         // First-Person Model Hooks
         osLib_registerHLEFunction("coreinit", "hook_SetActorOpacity", &hook_SetActorOpacity);
@@ -64,7 +66,6 @@ public:
         osLib_registerHLEFunction("coreinit", "hook_DropWeaponLogging", &hook_DropWeaponLogging);
         osLib_registerHLEFunction("coreinit", "hook_ModifyHandModelAccessSearch", &hook_ModifyHandModelAccessSearch);
         osLib_registerHLEFunction("coreinit", "hook_CreateNewScreen", &hook_CreateNewScreen);
-        osLib_registerHLEFunction("coreinit", "hook_RouteActorJob", &hook_RouteActorJob);
         osLib_registerHLEFunction("coreinit", "hook_FixLadder", &hook_FixLadder);
     };
     ~CemuHooks() {
@@ -206,6 +207,7 @@ private:
     static void hook_GetRenderCamera(PPCInterpreter_t* hCPU);
     static void hook_GetRenderProjection(PPCInterpreter_t* hCPU);
     static void hook_EndCameraSide(PPCInterpreter_t* hCPU);
+    static void hook_RouteActorJob(PPCInterpreter_t* hCPU);
 
     static void hook_UseCameraDistance(PPCInterpreter_t* hCPU);
     static void hook_ReplaceCameraMode(PPCInterpreter_t* hCPU);
@@ -213,6 +215,7 @@ private:
     static void hook_OverwriteCameraParam(PPCInterpreter_t* hCPU);
     static void hook_PlayerLadderFix(PPCInterpreter_t* hCPU);
     static void hook_FixLadder(PPCInterpreter_t* hCPU);
+    static void hook_PlayerIsRiding(PPCInterpreter_t* hCPU);
 
     // First-Person Model Hooks
     static void hook_SetActorOpacity(PPCInterpreter_t* hCPU);
@@ -237,7 +240,6 @@ private:
     static void hook_DropWeaponLogging(PPCInterpreter_t* hCPU);
     static void hook_ModifyHandModelAccessSearch(PPCInterpreter_t* hCPU);
     static void hook_CreateNewScreen(PPCInterpreter_t* hCPU);
-    static void hook_RouteActorJob(PPCInterpreter_t* hCPU);
 
 public:
     template <typename T>

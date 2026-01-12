@@ -639,6 +639,13 @@ void CemuHooks::hook_FixLadder(PPCInterpreter_t* hCPU) {
     }
 }
 
+void CemuHooks::hook_PlayerIsRiding(PPCInterpreter_t* hCPU) {
+    hCPU->instructionPointer = hCPU->sprNew.LR;
+
+    // todo: remove this once hooked up to input system. Also, move to a better function, maybe controls.cpp?
+    Log::print<VERBOSE>("Player is riding hook called: {}", hCPU->gpr[3]);
+}
+
 void CemuHooks::hook_PlayerLadderFix(PPCInterpreter_t* hCPU) {
     hCPU->gpr[0] = hCPU->sprNew.LR;
     hCPU->instructionPointer = 0x02D07CEC;
