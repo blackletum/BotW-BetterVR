@@ -6,9 +6,6 @@ moduleMatches = 0x6267BFD0
 ; disable AutoExposure
 ; 0x039D99A4 = li r3, 0
 
-; hook Player::isRiding()
-0x02D32E98 = ba import.coreinit.hook_PlayerIsRiding
-
 ; disable gyro controls
 0x02E1905C = li r3, 0 ; always return 0 to signal disabled
 0x02E19060 = blr
@@ -19,10 +16,8 @@ moduleMatches = 0x6267BFD0
 0x02E199B0 = blr
 0x02E199B4 = li r5, 0 ; always set 0
 
-
-; disable inversed button controls
-0x02E199AC = li r3, 0
-0x02E199B0 = blr
+; hook Player::isRiding()
+0x02D32E98 = ba import.coreinit.hook_PlayerIsRiding
 
 ; forces the player to always be guarding when the shield is drawn
 ; uses player rotation to determine the guard direction, not shield direction

@@ -59,7 +59,7 @@ While more integrated solutions are being found out, there's probably ways to se
 
 **Gameplay & Combat**
 - ~~Flurry Rush can be triggered but does not work.~~ This is fixed now!
-- * Motion control shrines aren't supported yet. There's only a few of these in the game so mark them on your map until its fixed.
+- ~~Motion control shrines aren't supported yet. There's only a few of these in the game so mark them on your map until its fixed.~~
 - Bow Aiming is done via a crosshair on the VR headset. Bow support might be added at some point.
 - Enemies will ocassionally not detect you
 - No roomscale support. You can freely move around your room, but enemies and physics will use your center point. 
@@ -161,7 +161,7 @@ There's enough that was skipped over or left out in this explanation.
 ### Credits
 Crementif: Main Developer  
 Acudofy: Sword & stab analysis system  
-Holydh: Developed some of the new input systems  
+Holydh: Developed the input systems  
 leoetlino: For the [BotW Decomp project](https://github.com/zeldaret/botw), which was very useful  
 Exzap: Technical support and optimization help  
 Mako Marci: Edited the trailer  

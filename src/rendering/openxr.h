@@ -35,6 +35,10 @@ public:
             std::array<XrSpaceVelocity, 2> poseVelocity;
             std::array<XrSpaceLocation, 2> hmdRelativePoseLocation;
 
+            XrActionStateBoolean mapAndInventory;
+            XrActionStateBoolean leftTrigger;
+            XrActionStateBoolean rightTrigger;
+
             // unique
             XrActionStateVector2f camera;
             XrActionStateVector2f move;
@@ -75,6 +79,7 @@ public:
             };
             std::array<ButtonState, 2> grabState; // LEFT/RIGHT
             ButtonState runState;
+            ButtonState mapAndInventoryState;
 
         } inGame;
         struct InMenu {
@@ -86,6 +91,10 @@ public:
             std::array<XrSpaceLocation, 2> poseLocation;
             std::array<XrSpaceVelocity, 2> poseVelocity;
             std::array<XrSpaceLocation, 2> hmdRelativePoseLocation;
+
+            XrActionStateBoolean mapAndInventory;
+            XrActionStateBoolean leftTrigger;
+            XrActionStateBoolean rightTrigger;
 
             // unique
             XrActionStateVector2f scroll;
