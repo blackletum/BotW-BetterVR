@@ -553,11 +553,19 @@ void CemuHooks::hook_ReplaceCameraMode(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
     uint32_t currentCameraMode = hCPU->gpr[3];
-    uint32_t cameraTailMode = hCPU->gpr[4]; // works best in VR since it ignores the pivot of the camera
+    uint32_t cameraChaseMode = hCPU->gpr[4]; // this is currently a pointer to the regular camera mode (CameraChase)
     uint32_t currentCameraVtbl = hCPU->gpr[5];
 
     constexpr uint32_t kCameraChaseVtbl = 0x101B34F4;
-    uint32_t kCameraTailVtbl = 0x101BC278;
+    constexpr uint32_t kCameraTailVtbl = 0x101BC278;
+    constexpr uint32_t kCameraAiming2Vtbl = 0X101B2EB4;
+    constexpr uint32_t kCameraMagneCatchVtbl = 0x101BAB4C;
+
+    if (hCPU->gpr[5] == kCameraMagneCatchVtbl) {
+        if (IsFirstPerson()) {
+            hCPU->gpr[3] = cameraChaseMode;
+        }
+    }
 
     if (hCPU->gpr[5] == kCameraTailVtbl) {
         //Log::print<RENDERING>("Current camera mode: {:#X}, tail mode: {:#X}, vtbl: {:#X}", currentCameraMode, cameraTailMode, currentCameraVtbl);
