@@ -550,23 +550,6 @@ struct BESeadPerspectiveProjection : BESeadProjection {
 static_assert(sizeof(BESeadProjection) == 0x94, "BESeadProjection size mismatch");
 static_assert(sizeof(BESeadPerspectiveProjection) == 0xB8, "BESeadPerspectiveProjection size mismatch");
 
-#pragma pack(push, 1)
-struct BESeadCamera {
-    BEMatrix34 mtx;
-    BEType<uint32_t> __vftable;
-};
-struct BESeadLookAtCamera : BESeadCamera {
-    BEVec3 pos;
-    BEVec3 at;
-    BEVec3 up;
-
-    bool operator==(const BESeadLookAtCamera& other) const {
-        return pos == other.pos && at == other.at && up == other.up;
-    }
-};
-#pragma pack(pop)
-static_assert(sizeof(BESeadCamera) == 0x34, "BESeadCamera size mismatch");
-static_assert(sizeof(BESeadLookAtCamera) == 0x58, "BESeadLookAtCamera size mismatch");
 struct data_VRProjectionMatrixOut {
     BEType<float> aspectRatio;
     BEType<float> fovY;

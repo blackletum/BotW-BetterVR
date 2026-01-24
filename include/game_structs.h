@@ -524,6 +524,57 @@ struct ActCamera : ActorWiiU {
 static_assert(offsetof(ActCamera, origCamMtx) == 0x550, "ActCamera.origCamMtx offset mismatch");
 static_assert(offsetof(ActCamera, finalCamMtx) == 0x5C0, "ActCamera.finalCamMtx offset mismatch");
 
+struct BESeadCamera {
+    BEMatrix34 mtx;
+    BEType<uint32_t> __vftable;
+};
+struct BESeadLookAtCamera : BESeadCamera {
+    BEVec3 pos;
+    BEVec3 at;
+    BEVec3 up;
+
+    bool operator==(const BESeadLookAtCamera& other) const {
+        return pos == other.pos && at == other.at && up == other.up;
+    }
+};
+static_assert(sizeof(BESeadCamera) == 0x34, "BESeadCamera size mismatch");
+static_assert(sizeof(BESeadLookAtCamera) == 0x58, "BESeadLookAtCamera size mismatch");
+
+// not identical memory layout wise
+struct Frustum {
+    glm::vec4 planes[6];
+
+    void update(const glm::mat4& vp) {
+        // Left
+        planes[0] = glm::vec4(vp[0][3] + vp[0][0], vp[1][3] + vp[1][0], vp[2][3] + vp[2][0], vp[3][3] + vp[3][0]);
+        // Right
+        planes[1] = glm::vec4(vp[0][3] - vp[0][0], vp[1][3] - vp[1][0], vp[2][3] - vp[2][0], vp[3][3] - vp[3][0]);
+        // Bottom
+        planes[2] = glm::vec4(vp[0][3] + vp[0][1], vp[1][3] + vp[1][1], vp[2][3] + vp[2][1], vp[3][3] + vp[3][1]);
+        // Top
+        planes[3] = glm::vec4(vp[0][3] - vp[0][1], vp[1][3] - vp[1][1], vp[2][3] - vp[2][1], vp[3][3] - vp[3][1]);
+        // Near
+        planes[4] = glm::vec4(vp[0][3] + vp[0][2], vp[1][3] + vp[1][2], vp[2][3] + vp[2][2], vp[3][3] + vp[3][2]);
+        // Far
+        planes[5] = glm::vec4(vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2]);
+
+        for (int i = 0; i < 6; ++i) {
+            float len = glm::length(glm::vec3(planes[i]));
+            planes[i] /= len;
+        }
+    }
+
+    bool checkSphere(const glm::vec3& center, float radius) const {
+        for (int i = 0; i < 6; ++i) {
+            float dist = glm::dot(glm::vec3(planes[i]), center) + planes[i].w;
+            if (dist < -radius) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
 #pragma pack(pop)
 
 inline std::string contactLayerNames[] = {
