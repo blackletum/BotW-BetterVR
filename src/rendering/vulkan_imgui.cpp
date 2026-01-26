@@ -543,6 +543,7 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                 ImGui::SameLine();
                 if (ImGui::RadioButton("Third Person", &cameraMode, 0)) { settings.cameraMode = CameraMode::THIRD_PERSON; changed = true; }
 
+                ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Text("Camera / Player Options");
                 if (cameraMode == 0) {
@@ -572,29 +573,59 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                     }
                 }
 
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Text("Cutscenes");
+                int cutsceneMode = (int)settings.cutsceneCameraMode.load();
+                int currentCutsceneModeIdx = cutsceneMode - 1;
+                if (currentCutsceneModeIdx < 0) currentCutsceneModeIdx = 1;
+                if (ImGui::Combo("Camera In Cutscenes", &currentCutsceneModeIdx, "First Person (Always)\0Optimal Settings (Mix Of Third/First)\0Third Person (Always)\0\0")) {
+                    settings.cutsceneCameraMode = (EventMode)(currentCutsceneModeIdx + 1);
+                    changed = true;
+                }
+
+                bool blackBars = settings.useBlackBarsForCutscenes;
+                if (ImGui::Checkbox("Cinematic Black Bars", &blackBars)) {
+                    settings.useBlackBarsForCutscenes = blackBars ? 1 : 0;
+                    changed = true;
+                }
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Text("UI");
                 if (cameraMode == 1) {
-                    ImGui::Separator();
-                    ImGui::Text("UI");
                     bool guiFollow = settings.uiFollowsGaze;
                     if (ImGui::Checkbox("UI Follows View", &guiFollow)) {
                         settings.uiFollowsGaze = guiFollow ? 1 : 0;
                         changed = true;
                     }
 
-                }
+                    int performanceOverlay = settings.performanceOverlay;
+                    const char* fpsOverlayOptions[] = { "Disable (no overhead)", "Only show in Cemu window (negligible overhead)", "Show in both Cemu and VR (small performance overhead)" };
+                    if (performanceOverlay < 0 || performanceOverlay > 2) performanceOverlay = 0;
+                    if (ImGui::Combo("Show FPS/Performance Overlay", &performanceOverlay, fpsOverlayOptions, 3)) {
+                        settings.performanceOverlay = performanceOverlay;
+                        changed = true;
+                    }
 
-                ImGui::Separator();
-                ImGui::Text("Cutscenes");
-                int cutsceneMode = (int)settings.cutsceneCameraMode.load();
-                int currentCutsceneModeIdx = cutsceneMode - 1;
-                if (currentCutsceneModeIdx < 0) currentCutsceneModeIdx = 1; 
-                if (ImGui::Combo("Camera In Cutscenes", &currentCutsceneModeIdx, "First Person (Always)\0Optimal Settings (Mix Of Third/First)\0Third Person (Always)\0\0")) {
-                     settings.cutsceneCameraMode = (EventMode)(currentCutsceneModeIdx + 1);
-                     changed = true;
-                }
+                    if (performanceOverlay >= 1) {
+                        static const int freqOptions[] = { 30, 60, 72, 80, 90, 120, 144 };
+                        int currentFreq = (int)settings.performanceOverlayFrequency.load();
+                        int freqIdx = 1; // Default to 60
+                        for (int i = 0; i < std::size(freqOptions); i++) {
+                            if (freqOptions[i] == currentFreq) {
+                                freqIdx = i;
+                                break;
+                            }
+                        }
 
-                bool blackBars = settings.useBlackBarsForCutscenes;
-                if (ImGui::Checkbox("Cinematic Black Bars", &blackBars)) { settings.useBlackBarsForCutscenes = blackBars ? 1 : 0; changed = true; }
+                        if (ImGui::SliderInt("Headset Refresh Rate (Used For Visualizing Overhead)", &freqIdx, 0, (int)std::size(freqOptions) - 1, std::format("{} Hz", freqOptions[freqIdx]).c_str())) {
+                            settings.performanceOverlayFrequency = freqOptions[freqIdx];
+                            changed = true;
+                        }
+                    }
+
+                }
 
                 if (ImGui::CollapsingHeader("Advanced Settings")) {
                     bool crop16x9 = settings.cropFlatTo16x9;
