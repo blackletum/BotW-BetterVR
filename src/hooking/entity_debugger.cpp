@@ -625,15 +625,13 @@ void EntityDebugger::DrawFPSOverlay(RND_Renderer* renderer) {
 
     // Use DisplaySize/FramebufferScale so positioning matches the same coordinate space as the overlay.
     ImVec2 windowSize = ImGui::GetIO().DisplaySize;
-    windowSize.x = windowSize.x / ImGui::GetIO().DisplayFramebufferScale.x;
-    windowSize.y = windowSize.y / ImGui::GetIO().DisplayFramebufferScale.y;
 
     const ImVec2 pad(10.0f, 10.0f);
     ImGui::SetNextWindowPos(ImVec2(windowSize.x - pad.x, pad.y), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
 
     if (ImGui::Begin("AppMS Overlay", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove)) {
         const float predictedDisplayPeriodMs = (float)renderer->GetPredictedDisplayPeriodMs();
-        const float predictedHz = predictedDisplayPeriodMs > 0.0f ? (1000.0f / predictedDisplayPeriodMs) : 0.0f;
+        const float predictedHz = GetSettings().performanceOverlayFrequency;
 
         const float appMs = (float)renderer->GetLastFrameTimeMs();      // Total frame time (includes wait)
         const float workMs = (float)renderer->GetLastFrameWorkTimeMs(); // GPU Work time only (excludes wait)
@@ -650,29 +648,25 @@ void EntityDebugger::DrawFPSOverlay(RND_Renderer* renderer) {
         const float workPct = predictedDisplayPeriodMs > 0.0f ? (workMs / predictedDisplayPeriodMs) * 100.0f : 0.0f;
 
         // --- 3. Text Summary ---
-        ImGui::Text("Your headset is %.0f Hz", predictedHz);
+        ImGui::Text("The visualization refresh rate of your headset is set to %.0f Hz", predictedHz);
         ImGui::Text("Currently Running At %.1f FPS", appFps);
         ImGui::Text("");
         ImGui::Text("OpenXR waited %.1f ms so that it can interpolate/have low latency.", waitMs);
         ImGui::Text("Theoretically, it'd run at %.1f FPS if that didn't matter", workFps);
 
-        if (predictedHz > 0.0f && workFps > 0.0f) {
+        if (predictedHz > 0.0f && workFps >= 0.0f) {
             auto rateForDivisor = [predictedHz](int divisor) -> double {
                 return divisor > 0 ? (predictedHz / (double)divisor) : 0.0;
             };
 
             auto chooseBestDivisor = [&](double fps) -> int {
-                // Pick the closest *supported* refresh divisor (1x, 1/2x, 1/3x, 1/4x).
-                int bestDiv = 1;
-                double bestErr = std::abs(fps - rateForDivisor(1));
-                for (int div = 2; div <= 4; ++div) {
-                    const double err = std::abs(fps - rateForDivisor(div));
-                    if (err < bestErr) {
-                        bestErr = err;
-                        bestDiv = div;
+                // Pick the refresh divisor (1x, 1/2x, 1/3x, 1/4x) that is able to be achieved using the workFPS (frame time minus OpenXR wait time)
+                for (int div = 1; div <= 4; ++div) {
+                    if (fps >= rateForDivisor(div)) {
+                        return div;
                     }
                 }
-                return bestDiv;
+                return 4;
             };
 
             // Use theoretical FPS (GPU work time) as the basis for which step we're closest to.

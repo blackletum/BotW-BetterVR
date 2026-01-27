@@ -472,14 +472,16 @@ struct ModSettings {
     std::atomic<float> playerHeightOffset = 0.0f;
     std::atomic_bool leftHanded = false;
     std::atomic_bool uiFollowsGaze = true;
-    std::atomic_bool cropFlatTo16x9 = false;
+    std::atomic_bool cropFlatTo16x9 = true;
 
     // advanced settings
     std::atomic_bool enableDebugOverlay = false;
     std::atomic<AngularVelocityFixerMode> buggyAngularVelocity = AngularVelocityFixerMode::AUTO;
     std::atomic_uint32_t performanceOverlay = 0;
+    std::atomic_uint32_t performanceOverlayFrequency = 60;
 
     CameraMode GetCameraMode() const { return cameraMode; }
+
     PlayMode GetPlayMode() const { return playMode; }
     bool DoesUIFollowGaze() const { return uiFollowsGaze; }
     bool IsLeftHanded() const { return leftHanded; }
@@ -519,11 +521,15 @@ struct ModSettings {
         std::format_to(std::back_inserter(buffer), " - Cutscene Camera Mode: {}\n", GetCutsceneCameraMode() == EventMode::ALWAYS_FIRST_PERSON ? "Always First Person" : (GetCutsceneCameraMode() == EventMode::ALWAYS_THIRD_PERSON ? "Always Third Person" : "Follow Default Event Settings"));
         std::format_to(std::back_inserter(buffer), " - Show Black Bars for Third-Person Cutscenes: {}\n", UseBlackBarsForCutscenes() ? "Yes" : "No");
         std::format_to(std::back_inserter(buffer), " - Performance Overlay: {}\n", performanceOverlay == 0 ? "Disabled" : (performanceOverlay == 1 ? "2D Only" : "Enabled"));
+        std::format_to(std::back_inserter(buffer), " - Performance Overlay Frequency: {} Hz\n", performanceOverlayFrequency.load());
         return buffer;
     }
+
 };
 
 extern ModSettings& GetSettings();
+extern void InitSettings();
+
 
 
 #pragma pack(push, 1)

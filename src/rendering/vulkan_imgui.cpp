@@ -12,7 +12,10 @@
 RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, VkExtent2D fbRes, VkFormat fbFormat): m_outputRes(fbRes) {
     ImGui::CreateContext();
     ImGui::GetIO().IniFilename = "BetterVR_settings.ini";
+    InitSettings();
+    ImGui::LoadIniSettingsFromDisk("BetterVR_settings.ini");
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
     ImGui::GetIO().BackendFlags |= ImGuiBackendFlags_HasGamepad;
     ImPlot3D::CreateContext();
     ImPlot::CreateContext();
@@ -207,7 +210,6 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, VkExtent2D fbRes, V
     page3.push_back(createHelpImage(BOTWcontrolScheme_Whistle, sizeof(BOTWcontrolScheme_Whistle)));
     m_helpImagePages.push_back(page3);
 
-    
     VulkanUtils::DebugPipelineBarrier(cb);
 
     // start the first frame right away
@@ -242,7 +244,6 @@ RND_Renderer::ImGuiOverlay::~ImGuiOverlay() {
         }
     }
 
-
     if (m_sampler != VK_NULL_HANDLE)
         VRManager::instance().VK->GetDeviceDispatch()->DestroySampler(VRManager::instance().VK->GetDevice(), m_sampler, nullptr);
     if (m_renderPass != VK_NULL_HANDLE)
@@ -257,7 +258,7 @@ RND_Renderer::ImGuiOverlay::~ImGuiOverlay() {
 }
 
 void RND_Renderer::ImGuiOverlay::Update() {
-    ImGui::GetIO().FontGlobalScale = 0.9f;
+    ImGui::GetIO().FontGlobalScale = 1.0f;
 
     POINT p;
     GetCursorPos(&p);
@@ -281,26 +282,34 @@ void RND_Renderer::ImGuiOverlay::Update() {
     ImVec2 physicalRes = ImVec2(renderPhysicalWidth, renderPhysicalHeight);
     ImVec2 framebufferRes = ImVec2((float)m_outputRes.width, (float)m_outputRes.height);
 
-    ImGui::GetIO().DisplaySize = physicalRes;
+    // calculate a virtual resolution to keep UI size consistent
+    float uiScaleFactor = (float)renderPhysicalHeight / 1080.0f;
+    if (uiScaleFactor < 0.1f) uiScaleFactor = 0.1f;
+
+    uiScaleFactor *= 2.0f;
+
+    ImVec2 logicalRes = ImVec2(physicalRes.x / uiScaleFactor, physicalRes.y / uiScaleFactor);
+
+    ImGui::GetIO().DisplaySize = logicalRes;
 
     // calculate the black bars
     uint32_t blackBarWidth = (nonCenteredWindowWidth - renderPhysicalWidth) / 2;
     uint32_t blackBarHeight = (nonCenteredWindowHeight - renderPhysicalHeight) / 2;
 
     // adjust the framebuffer scale
-    ImGui::GetIO().DisplayFramebufferScale = framebufferRes / physicalRes;
+    ImGui::GetIO().DisplayFramebufferScale = framebufferRes / logicalRes;
 
     // the actual window is centered, so add offsets to both x and y on both sides
     p.x = p.x - blackBarWidth;
     p.y = p.y - blackBarHeight;
 
     // update mouse controls and keyboard input
-    bool isWindowFocused = CemuHooks::m_cemuTopWindow == GetForegroundWindow() || true;
+    bool isWindowFocused = CemuHooks::m_cemuTopWindow == GetForegroundWindow();
 
-    ImGui::GetIO().AddFocusEvent(isWindowFocused);
+    //ImGui::GetIO().AddFocusEvent(true);
     if (isWindowFocused) {
         // update mouse state depending on if the window is focused
-        ImGui::GetIO().AddMousePosEvent((float)p.x, (float)p.y);
+        ImGui::GetIO().AddMousePosEvent((float)p.x / uiScaleFactor, (float)p.y / uiScaleFactor);
 
         ImGui::GetIO().AddMouseButtonEvent(0, GetAsyncKeyState(VK_LBUTTON) & 0x8000);
         ImGui::GetIO().AddMouseButtonEvent(1, GetAsyncKeyState(VK_RBUTTON) & 0x8000);
@@ -403,8 +412,8 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
     auto& io = ImGui::GetIO();
     bool inGame = inputs.inGame.in_game;
 
-    bool backDown = false;
-    bool confirmDown = false;
+    bool backDown;
+    bool confirmDown;
     XrActionStateVector2f stick;
     if (inputs.inGame.in_game) {
         stick = inputs.inGame.move;
@@ -466,7 +475,7 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
     applyInput(ImGuiKey_GamepadFaceDown, confirmDown, 5);
 
     // prevent exiting menu if a popup or field is being edited
-    if (ImGui::IsAnyItemActive()) {
+    if (ImGui::IsAnyItemActive() && ImGui::IsPopupOpen(NULL, ImGuiPopupFlags_AnyPopupId + ImGuiPopupFlags_AnyPopupLevel)) {
         return;
     }
 
@@ -501,10 +510,18 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
         ImGui::End();
     }
 
-    if (!isMenuOpen) return;
+    static bool wasMenuPrevOpened = false;
 
-    if (!ImGui::IsAnyItemActive()) {
+    if (!isMenuOpen && wasMenuPrevOpened) {
+        wasMenuPrevOpened = false;
+    }
+
+    if (!isMenuOpen)
+        return;
+
+    if (isMenuOpen && !wasMenuPrevOpened) {
         ImGui::SetNextWindowFocus();
+        wasMenuPrevOpened = true;
     }
 
     ImVec2 fullWindowWidth = ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
@@ -514,7 +531,8 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
     ImGui::SetNextWindowSize(windowWidth, ImGuiCond_Always);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-    if (ImGui::Begin("BetterVR Settings & Help##Settings", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    if (ImGui::Begin("BetterVR Settings & Help | Long-Press Right Thumbstick To Exit Or Press B##Settings", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        bool changed = false;
 
         if (ImGui::BeginTabBar("HelpMenuTabs")) {
             if (ImGui::BeginTabItem("Settings", nullptr, 0)) {
@@ -523,7 +541,6 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                 ImGui::PushItemWidth(windowWidth.x * 0.5f);
 
                 auto& settings = GetSettings();
-                bool changed = false;
 
                 ImGui::Separator();
                 ImGui::Text("Camera Mode");
@@ -532,6 +549,7 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                 ImGui::SameLine();
                 if (ImGui::RadioButton("Third Person", &cameraMode, 0)) { settings.cameraMode = CameraMode::THIRD_PERSON; changed = true; }
 
+                ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Text("Camera / Player Options");
                 if (cameraMode == 0) {
@@ -554,36 +572,66 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                         changed = true;
                     }
 
-                    bool leftHanded = settings.leftHanded;
-                    if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
-                        settings.leftHanded = leftHanded ? 1 : 0;
-                        changed = true;
-                    }
+                    //bool leftHanded = settings.leftHanded;
+                    //if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
+                    //    settings.leftHanded = leftHanded ? 1 : 0;
+                    //    changed = true;
+                    //}
                 }
 
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Text("Cutscenes");
+                int cutsceneMode = (int)settings.cutsceneCameraMode.load();
+                int currentCutsceneModeIdx = cutsceneMode - 1;
+                if (currentCutsceneModeIdx < 0) currentCutsceneModeIdx = 1;
+                if (ImGui::Combo("Camera In Cutscenes", &currentCutsceneModeIdx, "First Person (Always)\0Optimal Settings (Mix Of Third/First)\0Third Person (Always)\0\0")) {
+                    settings.cutsceneCameraMode = (EventMode)(currentCutsceneModeIdx + 1);
+                    changed = true;
+                }
+
+                bool blackBars = settings.useBlackBarsForCutscenes;
+                if (ImGui::Checkbox("Cinematic Black Bars", &blackBars)) {
+                    settings.useBlackBarsForCutscenes = blackBars ? 1 : 0;
+                    changed = true;
+                }
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Text("UI");
                 if (cameraMode == 1) {
-                    ImGui::Separator();
-                    ImGui::Text("UI");
                     bool guiFollow = settings.uiFollowsGaze;
                     if (ImGui::Checkbox("UI Follows View", &guiFollow)) {
                         settings.uiFollowsGaze = guiFollow ? 1 : 0;
                         changed = true;
                     }
 
-                }
+                    int performanceOverlay = settings.performanceOverlay;
+                    const char* fpsOverlayOptions[] = { "Disable (no overhead)", "Only show in Cemu window (negligible overhead)", "Show in both Cemu and VR (small performance overhead)" };
+                    if (performanceOverlay < 0 || performanceOverlay > 2) performanceOverlay = 0;
+                    if (ImGui::Combo("Show FPS/Performance Overlay", &performanceOverlay, fpsOverlayOptions, 3)) {
+                        settings.performanceOverlay = performanceOverlay;
+                        changed = true;
+                    }
 
-                ImGui::Separator();
-                ImGui::Text("Cutscenes");
-                int cutsceneMode = (int)settings.cutsceneCameraMode.load();
-                int currentCutsceneModeIdx = cutsceneMode - 1;
-                if (currentCutsceneModeIdx < 0) currentCutsceneModeIdx = 1; 
-                if (ImGui::Combo("Camera In Cutscenes", &currentCutsceneModeIdx, "First Person (Always)\0Optimal Settings (Mix Of Third/First)\0Third Person (Always)\0\0")) {
-                     settings.cutsceneCameraMode = (EventMode)(currentCutsceneModeIdx + 1);
-                     changed = true;
-                }
+                    if (performanceOverlay >= 1) {
+                        static const int freqOptions[] = { 30, 60, 72, 80, 90, 120, 144 };
+                        int currentFreq = (int)settings.performanceOverlayFrequency.load();
+                        int freqIdx = 5; // Default to 90
+                        for (int i = 0; i < std::size(freqOptions); i++) {
+                            if (freqOptions[i] == currentFreq) {
+                                freqIdx = i;
+                                break;
+                            }
+                        }
 
-                bool blackBars = settings.useBlackBarsForCutscenes;
-                if (ImGui::Checkbox("Cinematic Black Bars", &blackBars)) { settings.useBlackBarsForCutscenes = blackBars ? 1 : 0; changed = true; }
+                        if (ImGui::SliderInt("Headset Refresh Rate (Used For Visualizing Overhead)", &freqIdx, 0, (int)std::size(freqOptions) - 1, std::format("{} Hz", freqOptions[freqIdx]).c_str())) {
+                            settings.performanceOverlayFrequency = freqOptions[freqIdx];
+                            changed = true;
+                        }
+                    }
+
+                }
 
                 if (ImGui::CollapsingHeader("Advanced Settings")) {
                     bool crop16x9 = settings.cropFlatTo16x9;
@@ -639,6 +687,10 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
             }
 
             ImGui::EndTabBar();
+        }
+
+        if (changed) {
+            ImGui::SaveIniSettingsToDisk("BetterVR_settings.ini");
         }
     }
     ImGui::End();

@@ -736,6 +736,14 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     // allow the gamepad inputs to control the imgui overlay
     imguiOverlay->ProcessInputs(inputs);
 
+    // ignore stick input when the help menu is open
+    if (isMenuOpen) {
+        leftStickSource.currentState = { 0.0f, 0.0f };
+        rightStickSource.currentState = { 0.0f, 0.0f };
+        leftJoystickDir = Direction::None;
+        rightJoystickDir = Direction::None;
+    }
+
     //Log::print<INFO>("last_weapon_held_hand : {}", gameState.last_weapon_held_hand);
     //Log::print<INFO>("Is weapon held : {}", gameState.is_weapon_or_object_held);
     //Log::print<INFO>("Weapon Type : {}", (int)gameState.left_weapon_type);
@@ -780,10 +788,6 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     // Process inputs
     if (isMenuOpen) {
         // ignore stick input when the mod menu is open
-        leftStickSource.currentState = { 0.0f, 0.0f };
-        rightStickSource.currentState = { 0.0f, 0.0f };
-        leftJoystickDir = Direction::None;
-        rightJoystickDir = Direction::None;
     }
     else if (gameState.in_game) {
         if (!gameState.prevent_inputs) {
