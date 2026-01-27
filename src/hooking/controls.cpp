@@ -733,16 +733,18 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     if (inventoryLongPress) {
         inputs.inGame.inventoryState.longFired_actedUpon = false;
         isMenuOpen = !isMenuOpen;
+    }
 
-        // ignore stick input when the help menu is open
+    // allow the gamepad inputs to control the imgui overlay
+    imguiOverlay->ProcessInputs(inputs);
+
+    // ignore stick input when the help menu is open
+    if (isMenuOpen) {
         leftStickSource.currentState = { 0.0f, 0.0f };
         rightStickSource.currentState = { 0.0f, 0.0f };
         leftJoystickDir = Direction::None;
         rightJoystickDir = Direction::None;
     }
-
-    // allow the gamepad inputs to control the imgui overlay
-    imguiOverlay->ProcessInputs(inputs);
 
     //Log::print<INFO>("last_weapon_held_hand : {}", gameState.last_weapon_held_hand);
     //Log::print<INFO>("Is weapon held : {}", gameState.is_weapon_or_object_held);

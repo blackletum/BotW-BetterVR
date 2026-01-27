@@ -210,7 +210,6 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, VkExtent2D fbRes, V
     page3.push_back(createHelpImage(BOTWcontrolScheme_Whistle, sizeof(BOTWcontrolScheme_Whistle)));
     m_helpImagePages.push_back(page3);
 
-    
     VulkanUtils::DebugPipelineBarrier(cb);
 
     // start the first frame right away
@@ -244,7 +243,6 @@ RND_Renderer::ImGuiOverlay::~ImGuiOverlay() {
             delete helpImage.m_image;
         }
     }
-
 
     if (m_sampler != VK_NULL_HANDLE)
         VRManager::instance().VK->GetDeviceDispatch()->DestroySampler(VRManager::instance().VK->GetDevice(), m_sampler, nullptr);
@@ -306,9 +304,9 @@ void RND_Renderer::ImGuiOverlay::Update() {
     p.y = p.y - blackBarHeight;
 
     // update mouse controls and keyboard input
-    bool isWindowFocused = CemuHooks::m_cemuTopWindow == GetForegroundWindow() || true;
+    bool isWindowFocused = CemuHooks::m_cemuTopWindow == GetForegroundWindow();
 
-    ImGui::GetIO().AddFocusEvent(isWindowFocused);
+    //ImGui::GetIO().AddFocusEvent(true);
     if (isWindowFocused) {
         // update mouse state depending on if the window is focused
         ImGui::GetIO().AddMousePosEvent((float)p.x / uiScaleFactor, (float)p.y / uiScaleFactor);
@@ -414,13 +412,14 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
     auto& io = ImGui::GetIO();
     bool inGame = inputs.inGame.in_game;
 
-    bool backDown = false;
-    bool confirmDown = false;
+    bool backDown;
+    bool confirmDown;
     XrActionStateVector2f stick;
     if (inputs.inGame.in_game) {
         stick = inputs.inGame.move;
-        backDown = inputs.inGame.run_interact_cancel.currentState;
-        confirmDown = inputs.inGame.jump.currentState;
+        backDown = inputs.inGame.jump.currentState;
+        confirmDown = inputs.inGame.run_interact_cancel.currentState;
+        Log::print<INFO>("backDown = {}, confirmDown = {}", backDown, confirmDown);
     }
     else {
         stick = inputs.inMenu.navigate;
@@ -484,9 +483,9 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
     // if no inputs or popup is open, allow closing the menu using the cancel/back button
     bool shouldClose = false;
     if (inGame) {
-        if (inputs.inGame.run_interact_cancel.changedSinceLastSync && inputs.inGame.run_interact_cancel.currentState) {
+        if (inputs.inGame.jump.changedSinceLastSync && inputs.inGame.jump.currentState) {
             shouldClose = true;
-            inputs.inGame.run_interact_cancel.currentState = XR_FALSE;
+            inputs.inGame.jump.currentState = XR_FALSE;
         }
     }
     else {
@@ -574,11 +573,11 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                         changed = true;
                     }
 
-                    bool leftHanded = settings.leftHanded;
-                    if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
-                        settings.leftHanded = leftHanded ? 1 : 0;
-                        changed = true;
-                    }
+                    //bool leftHanded = settings.leftHanded;
+                    //if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
+                    //    settings.leftHanded = leftHanded ? 1 : 0;
+                    //    changed = true;
+                    //}
                 }
 
                 ImGui::Spacing();
