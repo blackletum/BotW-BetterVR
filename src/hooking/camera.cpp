@@ -24,11 +24,13 @@ static std::pair<glm::quat, glm::quat> swingTwistY(const glm::quat& q) {
 }
 
 float hardcodedSwimOffset = 0.0f;
-float hardcodedRidingOffset = 0.65;
+float hardcodedRidingOffset = 0.65f;
+float hardcodedCrouchOffset = 0.3f;
 
 glm::fvec3 s_wsCameraPosition = glm::fvec3();
 glm::fquat s_wsCameraRotation = glm::identity<glm::fquat>();
 bool s_isSwimming = false;
+bool s_isCrouching = false;
 uint32_t s_isLadderClimbing = 0;
 uint32_t s_isRiding = 0;
 
@@ -78,6 +80,7 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
         PlayerMoveBitFlags moveBits = actor.moveBitFlags.getLE();
         s_isSwimming = ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_SWIMMING_OR_CLIMBING)) != 0) && 
             ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_SWIMMING)) != 0);
+        s_isCrouching = (std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_CROUCHING)) != 0;
 
         // Todo: move those and their hooks in controls.cpp ?
         auto gameState = VRManager::instance().XR->m_gameState.load();
@@ -99,6 +102,9 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
         else if (s_isSwimming) {
             float playerHeight = VRManager::instance().XR->GetRenderer()->GetMiddlePose().value()[3].y;
             playerPos.y += 1.73f - playerHeight;
+        }
+        else if (s_isCrouching){
+            playerPos.y -= hardcodedCrouchOffset;
         }
         else {
             playerPos.y += GetSettings().GetPlayerHeightOffset();
@@ -196,6 +202,9 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
         }
         else if (s_isSwimming) {
             playerPos.y += hardcodedSwimOffset + GetSettings().GetPlayerHeightOffset();
+        }
+        else if (s_isCrouching) {
+            playerPos.y -= hardcodedCrouchOffset;
         }
         else {
             playerPos.y += GetSettings().GetPlayerHeightOffset();
@@ -559,6 +568,9 @@ std::pair<glm::vec3, glm::fquat> CemuHooks::CalculateVRWorldPose(const BESeadLoo
         }
         else if (s_isSwimming) {
             playerPos.y += hardcodedSwimOffset;
+        }
+        else if (s_isCrouching){
+            playerPos.y -= hardcodedCrouchOffset;
         }
         else {
             playerPos.y += GetSettings().GetPlayerHeightOffset();
