@@ -151,6 +151,11 @@ constexpr bool HAS_FLAG(T1 flags, T2 test_flag) {
 }
 
 template <typename T>
+bool HasEnumFlag(T enumVal, T enumFlag) {
+    return (std::to_underlying(enumVal) & std::to_underlying(enumFlag)) != 0;
+}
+
+template <typename T>
 inline T swapEndianness(T val) {
     if constexpr (std::is_floating_point<T>::value) {
         union {
@@ -427,98 +432,103 @@ struct BEMatrix44 : BETypeCompatible {
     }
 };
 
-enum class EventMode {
+enum class EventMode : int32_t {
     NO_EVENT = 0,
     ALWAYS_FIRST_PERSON = 1,
     FOLLOW_DEFAULT_EVENT_SETTINGS = 2,
     ALWAYS_THIRD_PERSON = 3,
 };
 
-struct data_VRSettingsIn {
-    BEType<int32_t> cameraModeSetting;
-    BEType<int32_t> leftHandedSetting;
-    BEType<int32_t> guiFollowSetting;
-    BEType<float> playerHeightSetting;
-    BEType<int32_t> enable2DVRView;
-    BEType<int32_t> cropFlatTo16x9Setting;
-    BEType<int32_t> enableDebugOverlay;
-    BEType<int32_t> buggyAngularVelocity;
-    BEType<int32_t> cutsceneCameraMode;
-    BEType<int32_t> cutsceneBlackBars;
+enum class CameraMode : int32_t {
+    THIRD_PERSON = 0,
+    FIRST_PERSON = 1,
+};
 
-    bool IsLeftHanded() const {
-        return leftHandedSetting == 1;
-    }
+enum class PlayMode : int32_t {
+    SEATED = 0,
+    STANDING = 1,
+};
 
-    bool IsFirstPersonMode() const {
-        return cameraModeSetting == 1;
-    }
+enum class GazeFollowUISetting : int32_t {
+    FIXED = 0,
+    FOLLOW_LOOKING_DIRECTION = 1,
+};
 
-    bool IsThirdPersonMode() const {
-        return cameraModeSetting == 0;
-    }
+enum class AngularVelocityFixerMode : int32_t {
+    AUTO = 0, // Angular velocity fixer is automatically enabled for Oculus Link
+    FORCED_ON = 1,
+    FORCED_OFF = 2,
+};
 
-    EventMode GetCutsceneCameraMode() const {
-        // if in third-person mode, always use third-person cutscene camera
-        if (IsThirdPersonMode()) {
-            return EventMode::ALWAYS_THIRD_PERSON;
+struct ModSettings {
+    // playing mode settings
+    std::atomic<CameraMode> cameraMode = CameraMode::FIRST_PERSON;
+    std::atomic<PlayMode> playMode = PlayMode::STANDING;
+    std::atomic<float> thirdPlayerDistance = 0.5f;
+    std::atomic<EventMode> cutsceneCameraMode = EventMode::FOLLOW_DEFAULT_EVENT_SETTINGS;
+    std::atomic_bool useBlackBarsForCutscenes = false;
+
+    // first-person settings
+    std::atomic<float> playerHeightOffset = 0.0f;
+    std::atomic_bool leftHanded = false;
+    std::atomic_bool uiFollowsGaze = true;
+    std::atomic_bool cropFlatTo16x9 = true;
+
+    // advanced settings
+    std::atomic_bool enableDebugOverlay = false;
+    std::atomic<AngularVelocityFixerMode> buggyAngularVelocity = AngularVelocityFixerMode::AUTO;
+    std::atomic_uint32_t performanceOverlay = 0;
+    std::atomic_uint32_t performanceOverlayFrequency = 60;
+
+    CameraMode GetCameraMode() const { return cameraMode; }
+
+    PlayMode GetPlayMode() const { return playMode; }
+    bool DoesUIFollowGaze() const { return uiFollowsGaze; }
+    bool IsLeftHanded() const { return leftHanded; }
+    float GetPlayerHeightOffset() const {
+        // disable height offset in third-person mode
+        if (GetCameraMode() == CameraMode::THIRD_PERSON) {
+            return 0.0f;
         }
 
-        return (EventMode)cutsceneCameraMode.getLE();
+        return playerHeightOffset;
     }
-
-    bool UseBlackBarsForCutscenes() const {
-        return cutsceneBlackBars == 1;
+    EventMode GetCutsceneCameraMode() const {
+        // if in third-person mode, always use third-person cutscene camera
+        if (GetCameraMode() == CameraMode::THIRD_PERSON) {
+            return EventMode::ALWAYS_THIRD_PERSON;
+        }
+        return cutsceneCameraMode;
     }
+    bool UseBlackBarsForCutscenes() const { return useBlackBarsForCutscenes; }
+    bool ShouldFlatPreviewBeCroppedTo16x9() const { return cropFlatTo16x9 == 1; }
+    
+    bool ShowDebugOverlay() const { return enableDebugOverlay; }
+    AngularVelocityFixerMode AngularVelocityFixer_GetMode() const { return buggyAngularVelocity; }
 
-    bool UIFollowsLookingDirection() const {
-        return guiFollowSetting == 1;
-    }
-
-    bool Is2DVRViewEnabled() const {
-        return enable2DVRView == 1;
-    }
-
-    bool ShouldFlatPreviewBeCroppedTo16x9() const {
-        return cropFlatTo16x9Setting == 1;
-    }
-
-    bool ShowDebugOverlay() const {
-        return enableDebugOverlay.getLE() != 0;
-    }
-
-    float GetZNear() const {
-        return 0.1f;
-    }
-
-    float GetZFar() const {
-        return 25000.0f;
-    }
-
-    enum class AngularVelocityFixerMode {
-        AUTO = 0, // Angular velocity fixer is automatically enabled for Oculus Link
-        FORCED_ON = 1,
-        FORCED_OFF = 2,
-    };
-
-    AngularVelocityFixerMode AngularVelocityFixer_GetMode() {
-        return (AngularVelocityFixerMode)buggyAngularVelocity.getLE();
-    }
+    // By default BotW's camera uses 0.1f for near plane and 25000.0f for far plane, except maybe some indoor areas? But for simplicity, we'll use the default values everywhere.
+    float GetZNear() const { return 0.1f; }
+    float GetZFar() const { return 25000.0f; }
 
     std::string ToString() const {
         std::string buffer = "";
-        std::format_to(std::back_inserter(buffer), " - Camera Mode: {}\n", IsFirstPersonMode() ? "First Person" : "Third Person");
+        std::format_to(std::back_inserter(buffer), " - Camera Mode: {}\n", GetCameraMode() == CameraMode::FIRST_PERSON ? "First Person" : "Third Person");
         std::format_to(std::back_inserter(buffer), " - Left Handed: {}\n", IsLeftHanded() ? "Yes" : "No");
-        std::format_to(std::back_inserter(buffer), " - GUI Follow Setting: {}\n", UIFollowsLookingDirection() ? "Follow Looking Direction" : "Fixed");
-        std::format_to(std::back_inserter(buffer), " - Player Height: {} meters\n", playerHeightSetting.getLE());
-        std::format_to(std::back_inserter(buffer), " - 2D VR View Enabled: {}\n", Is2DVRViewEnabled() ? "Yes" : "No");
+        std::format_to(std::back_inserter(buffer), " - GUI Follow Setting: {}\n", DoesUIFollowGaze() ? "Follow Looking Direction" : "Fixed");
+        std::format_to(std::back_inserter(buffer), " - Player Height: {} meters\n", GetPlayerHeightOffset());
         std::format_to(std::back_inserter(buffer), " - Crop Flat to 16:9: {}\n", ShouldFlatPreviewBeCroppedTo16x9() ? "Yes" : "No");
         std::format_to(std::back_inserter(buffer), " - Debug Overlay: {}\n", ShowDebugOverlay() ? "Enabled" : "Disabled");
         std::format_to(std::back_inserter(buffer), " - Cutscene Camera Mode: {}\n", GetCutsceneCameraMode() == EventMode::ALWAYS_FIRST_PERSON ? "Always First Person" : (GetCutsceneCameraMode() == EventMode::ALWAYS_THIRD_PERSON ? "Always Third Person" : "Follow Default Event Settings"));
         std::format_to(std::back_inserter(buffer), " - Show Black Bars for Third-Person Cutscenes: {}\n", UseBlackBarsForCutscenes() ? "Yes" : "No");
+        std::format_to(std::back_inserter(buffer), " - Performance Overlay: {}\n", performanceOverlay == 0 ? "Disabled" : (performanceOverlay == 1 ? "2D Only" : "Enabled"));
+        std::format_to(std::back_inserter(buffer), " - Performance Overlay Frequency: {} Hz\n", performanceOverlayFrequency.load());
         return buffer;
     }
+
 };
+
+extern ModSettings& GetSettings();
+extern void InitSettings();
 
 
 

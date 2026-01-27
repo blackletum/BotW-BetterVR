@@ -76,8 +76,6 @@ public:
         FreeLibrary(m_cemuHandle);
     };
 
-    static data_VRSettingsIn GetSettings();
-
     static HWND m_cemuTopWindow;
     static HWND m_cemuRenderWindow;
     static uint64_t s_memoryBaseAddress;
@@ -166,7 +164,7 @@ public:
         }
         else {
             // no event. Check if gameplay is in first-person mode
-            if (GetSettings().IsFirstPersonMode()) {
+            if (GetSettings().GetCameraMode() == CameraMode::FIRST_PERSON) {
                 return true;
             }
             return false;
@@ -198,6 +196,7 @@ private:
 
     static bool IsScreenOpen(ScreenId screen);
     static void InitWindowHandles();
+
     static std::pair<glm::vec3, glm::fquat> CalculateVRWorldPose(const BESeadLookAtCamera& camera, uint8_t side);
 
     static void hook_UpdateSettings(PPCInterpreter_t* hCPU);

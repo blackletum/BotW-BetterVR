@@ -1,9 +1,68 @@
 #include "cemu_hooks.h"
+#include "imgui_internal.h"
 #include "instance.h"
 #include "hooking/entity_debugger.h"
 
-std::mutex g_settingsMutex;
-data_VRSettingsIn g_settings = {};
+ModSettings g_settings = {};
+
+ModSettings& GetSettings() {
+    return g_settings;
+}
+
+static void* Settings_ReadOpen(ImGuiContext*, ImGuiSettingsHandler*, const char* name) {
+    if (strcmp(name, "Settings") != 0)
+        return nullptr;
+    return &GetSettings();
+}
+
+static void Settings_ReadLine(ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line) {
+    auto* s = (ModSettings*)entry;
+    int i_val;
+    float f_val;
+    if (sscanf(line, "CameraMode=%d", &i_val) == 1)      { s->cameraMode.store((CameraMode)i_val); return; }
+    if (sscanf(line, "PlayMode=%d", &i_val) == 1)        { s->playMode.store((PlayMode)i_val); return; }
+    if (sscanf(line, "ThirdPlayerDistance=%f", &f_val) == 1) { s->thirdPlayerDistance.store(f_val); return; }
+    if (sscanf(line, "CutsceneCameraMode=%d", &i_val) == 1) { s->cutsceneCameraMode.store((EventMode)i_val); return; }
+    if (sscanf(line, "UseBlackBarsForCutscenes=%d", &i_val) == 1) { s->useBlackBarsForCutscenes.store(i_val); return; }
+    if (sscanf(line, "PlayerHeightOffset=%f", &f_val) == 1) { s->playerHeightOffset.store(f_val); return; }
+    if (sscanf(line, "LeftHanded=%d", &i_val) == 1)      { s->leftHanded.store(i_val); return; }
+    if (sscanf(line, "UiFollowsGaze=%d", &i_val) == 1)   { s->uiFollowsGaze.store(i_val); return; }
+    if (sscanf(line, "CropFlatTo16x9=%d", &i_val) == 1)  { s->cropFlatTo16x9.store(i_val); return; }
+    if (sscanf(line, "EnableDebugOverlay=%d", &i_val) == 1) { s->enableDebugOverlay.store(i_val); return; }
+    if (sscanf(line, "BuggyAngularVelocity=%d", &i_val) == 1) { s->buggyAngularVelocity.store((AngularVelocityFixerMode)i_val); return; }
+    if (sscanf(line, "PerformanceOverlay=%d", &i_val) == 1) { s->performanceOverlay.store(i_val); return; }
+    if (sscanf(line, "PerformanceOverlayFrequency=%d", &i_val) == 1) { s->performanceOverlayFrequency.store(i_val); return; }
+}
+
+static void Settings_WriteAll(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf) {
+    auto& s = GetSettings();
+    buf->reserve(buf->size() + 1024);
+    buf->appendf("[%s][Settings]\n", handler->TypeName);
+    buf->appendf("CameraMode=%d\n", (int)s.cameraMode.load());
+    buf->appendf("PlayMode=%d\n", (int)s.playMode.load());
+    buf->appendf("ThirdPlayerDistance=%.3f\n", s.thirdPlayerDistance.load());
+    buf->appendf("CutsceneCameraMode=%d\n", (int)s.cutsceneCameraMode.load());
+    buf->appendf("UseBlackBarsForCutscenes=%d\n", (int)s.useBlackBarsForCutscenes.load());
+    buf->appendf("PlayerHeightOffset=%.3f\n", s.playerHeightOffset.load());
+    buf->appendf("LeftHanded=%d\n", (int)s.leftHanded.load());
+    buf->appendf("UiFollowsGaze=%d\n", (int)s.uiFollowsGaze.load());
+    buf->appendf("CropFlatTo16x9=%d\n", (int)s.cropFlatTo16x9.load());
+    buf->appendf("EnableDebugOverlay=%d\n", (int)s.enableDebugOverlay.load());
+    buf->appendf("BuggyAngularVelocity=%d\n", (int)s.buggyAngularVelocity.load());
+    buf->appendf("PerformanceOverlay=%d\n", (int)s.performanceOverlay.load());
+    buf->appendf("PerformanceOverlayFrequency=%d\n", (int)s.performanceOverlayFrequency.load());
+    buf->appendf("\n");
+}
+
+void InitSettings() {
+    ImGuiSettingsHandler ini_handler;
+    ini_handler.TypeName = "BetterVR";
+    ini_handler.TypeHash = ImHashStr("BetterVR");
+    ini_handler.ReadOpenFn = Settings_ReadOpen;
+    ini_handler.ReadLineFn = Settings_ReadLine;
+    ini_handler.WriteAllFn = Settings_WriteAll;
+    ImGui::AddSettingsHandler(&ini_handler);
+}
 
 HWND CemuHooks::m_cemuTopWindow = NULL;
 HWND CemuHooks::m_cemuRenderWindow = NULL;
@@ -64,18 +123,12 @@ void CemuHooks::hook_UpdateSettings(PPCInterpreter_t* hCPU) {
     // Log::print("Updated settings!");
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
-    uint32_t ppc_settingsOffset = hCPU->gpr[5];
     uint32_t ppc_tableOfCutsceneEventSettings = hCPU->gpr[6];
-    data_VRSettingsIn settings = {};
-
-    if (auto& debugger = VRManager::instance().Hooks->m_entityDebugger) {
-        debugger->UpdateEntityMemory();
+    
+    if (GetSettings().ShowDebugOverlay() && VRManager::instance().Hooks->m_entityDebugger) {
+        VRManager::instance().Hooks->m_entityDebugger->UpdateEntityMemory();
     }
 
-    readMemory(ppc_settingsOffset, &settings);
-
-    std::lock_guard lock(g_settingsMutex);
-    g_settings = settings;
     ++s_framesSinceLastCameraUpdate;
 
 #ifdef _DEBUG
@@ -110,12 +163,6 @@ void CemuHooks::hook_UpdateSettings(PPCInterpreter_t* hCPU) {
 
     initCutsceneDefaultSettings(ppc_tableOfCutsceneEventSettings);
 }
-
-data_VRSettingsIn CemuHooks::GetSettings() {
-    std::lock_guard lock(g_settingsMutex);
-    return g_settings;
-}
-
 
 void CemuHooks::hook_OSReportToConsole(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
@@ -208,8 +255,6 @@ void CemuHooks::hook_RouteActorJob(PPCInterpreter_t* hCPU) {
     else if (hCPU->gpr[3] == 2) {
         //Log::print<INFO>("[{}] Ran ALTERED VERSION of {}", actorName, jobNameStr);
     }
-
-
 
     // exit r3:
     // 1 = skip job

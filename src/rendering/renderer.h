@@ -179,16 +179,21 @@ public:
         static void DrawHUDLayerAsBackground(VkCommandBuffer cb, VkImage srcImage, long frameIdx);
         void Render(long frameIdx, bool renderBackground);
         void DrawAndCopyToImage(VkCommandBuffer cb, VkImage destImage, long frameIdx);
+        void DrawHelpMenu();
+        void ProcessInputs(OpenXR::InputState& inputs);
+        int GetHelpImagePagesCount() const { return m_helpImagePages.size(); };
 
     private:
         VkDescriptorPool m_descriptorPool;
         VkRenderPass m_renderPass;
+        struct HelpImage {
+            VulkanTexture* m_image;
+            VkDescriptorSet m_imageDS = VK_NULL_HANDLE;
+        };
+        std::vector<std::vector<HelpImage>> m_helpImagePages;
 
         VkSampler m_sampler = VK_NULL_HANDLE;
         VkExtent2D m_outputRes = {};
-
-        uint8_t m_showAppMS = 0;
-        bool m_wasF3Pressed = false;
     };
 
     std::unique_ptr<Layer3D> m_layer3D;
