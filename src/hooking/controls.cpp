@@ -775,7 +775,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             default: break;
         }
 
-        if (inputs.inMenu.select.currentState || inputs.inMenu.back.currentState) // need to add a way to quit dpad menu by pressing again grips
+        if (!inputs.inMenu.leftGrip.currentState && !inputs.inMenu.rightGrip.currentState)
         {
             gameState.dpad_menu_open = false;
             gameState.last_dpad_menu_open = Direction::None;
