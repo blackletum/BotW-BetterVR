@@ -714,7 +714,7 @@ void CemuHooks::hook_ReplaceCameraMode(PPCInterpreter_t* hCPU) {
 
     if (hCPU->gpr[5] == kCameraMagneCatchVtbl) {
         if (IsFirstPerson()) {
-            hCPU->gpr[3] = cameraChaseMode;
+            //hCPU->gpr[3] = cameraChaseMode;
         }
     }
 
