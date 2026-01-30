@@ -505,7 +505,7 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
         ImGui::SetNextWindowBgAlpha(0.8f);
         ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiCond_Always);
         if (ImGui::Begin("HelpNotify", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs)) {
-            ImGui::TextColored(ImVec4(1.0, 1.0, 1.0, 1.0), "Long-Press The Inventory Button (Right Thumbstick By Default) To Open BetterVR Help & Settings");
+            ImGui::TextColored(ImVec4(1.0, 1.0, 1.0, 1.0), "Long-Press The X Button (or A button on left controller for Valve hmd) To Open BetterVR Help & Settings");
         }
         ImGui::End();
     }
