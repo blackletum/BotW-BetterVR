@@ -107,6 +107,7 @@ public:
     static bool IsShowingMenu() {
         return !IsInGame() || IsScreenOpen(ScreenId::ShopBG_00) || IsScreenOpen(ScreenId::MessageDialog);
     }
+    static bool UseMonoFrameBufferTemporarilyDuringMenusOrPictures();
 
     static std::string s_currentEvent;
     static HybridEventSettings s_currentEventSettings;
@@ -183,6 +184,7 @@ public:
 
         return GetSettings().UseBlackBarsForCutscenes();
     }
+    static bool IsScreenOpen(ScreenId screen);
 
     static void DrawDebugOverlays();
 
@@ -195,7 +197,6 @@ private:
 
     static std::atomic_uint32_t s_framesSinceLastCameraUpdate;
 
-    static bool IsScreenOpen(ScreenId screen);
     static void InitWindowHandles();
 
     static std::pair<glm::vec3, glm::fquat> CalculateVRWorldPose(const BESeadLookAtCamera& camera, uint8_t side);
@@ -250,6 +251,7 @@ private:
     static void hook_ModifyHandModelAccessSearch(PPCInterpreter_t* hCPU);
     static void hook_CreateNewScreen(PPCInterpreter_t* hCPU);
     static void hook_FixUIBlending(PPCInterpreter_t* hCPU);
+    static void hook_FixCameraSaveFilesAndInventory(PPCInterpreter_t* hCPU);
 
 public:
     template <typename T>

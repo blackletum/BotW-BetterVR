@@ -154,7 +154,7 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
             if (s_curr3DColorImage == VK_NULL_HANDLE) {
                 lockImageResolutions.lock();
                 if (const auto it = imageResolutions.find(image); it != imageResolutions.end()) {
-                    if (it->second.second == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
+                    if (it->second.second == VK_FORMAT_A2B10G10R10_UNORM_PACK32) {
                         s_curr3DColorImage = it->first;
                     }
                 }
