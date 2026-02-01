@@ -135,22 +135,22 @@ data_TableOfCutsceneEventsSettings:
 .string "Demo210_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: Korok Forest ~ Praise by the Great Deku Tree | cutscene you get after beating the master trials
 .string "Demo211_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: Trial of the Sword - Arriving in last room | link speaks to monks at the end of the master trial https://youtu.be/fNRVxCWbM8E?t=3397
 .string "Demo299_0,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: "Hero's Path" Demo
-.string "Demo300_0,FP_ON,PAN_ON,HND_ON,CTRL_OFF" ; name: Master Sword Pulling demo
+.string "Demo300_0,FP_ON,PAN_OFF,HND_ON,CTRL_OFF" ; name: Master Sword Pulling demo
 .string "Demo305_0,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: [Rito kids] Five sisters fly away | rito kids discover the just unlocked shrine, and fly away: https://youtu.be/LeM4bfJ3Ecg?t=633
 .string "Demo309_0,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; name: Impa shows the 13th memory picture | https://youtu.be/Za2yRAMcGCc?t=1027
 .string "Demo309_1,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Zelda's voice after seeing the last memory
-.string "Demo309_2,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: Memory demo | Memories seem to start with a little panning: https://youtu.be/ROcgrugcbOk?t=1141
+.string "Demo309_2,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Memory demo | Memories seem to start with a little panning: https://youtu.be/ROcgrugcbOk?t=1141
 .string "Demo318_0,FP_ON,PAN_OFF,HND_OFF,CTRL_ON" ; name: Zelda's voice after leaving the Shrine of Resurrection
 .string "Demo327_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: [Goron's Rock Carrying] Demonstration of cooking roast rock and son's eating and destroying the rock | There's like a whole cooking scene with multiple cuts. Probably not fit for VR: https://youtu.be/vSbd99LkE9o?t=508
 .string "Demo330_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: [Snaarathi Race] Demo at the start of the race
 .string "Demo330_1,FP_ON,PAN_OFF,HND_OFF,CTRL_ON" ; name: [Snaarathi Race] Demo when I gave a new record
-.string "Demo331_0,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; name: [Do not step on flowers] Flower lady getting angry | https://www.youtube.com/watch?v=Tx0sx6M-nLI
+.string "Demo331_0,FP_OFF,PAN_OFF,HND_OFF,CTRL_OFF" ; name: [Do not step on flowers] Flower lady getting angry | https://www.youtube.com/watch?v=Tx0sx6M-nLI
 .string "Demo333_0,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Stationary Guardian activation demo | Zoom-ins on stationary guardians on the great plateau https://www.youtube.com/watch?v=FeGfQ5zN5ZM  By default, this makes the camera go absolutely crazy, often spinning rapidly and flying up into the sky. Both in first and third person mode.
 .string "Demo344_0,FP_ON,PAN_OFF,HND_OFF,CTRL_ON" ; name: Vah Ruta before scream demo | TODO: Could check out whether calling the demo of the beast rising from the ground switches the demo id that the mod receives, or whether it's separate.  You talk to the king of the Zora domain, and a bunch of advisors. Link stays put in one place. It calls another Demo that shows the elephant rising from the water and roaring: https://www.youtube.com/watch?v=nQkO5UeoJm0
 .string "Demo344_1,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: Vah Ruta last attack demo
 .string "Demo344_2,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: [Vah Ruta] Sidon joins
 .string "Demo344_4,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: [Vah Ruta] Thanks
-.string "Demo346_0,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Destroying rocks with bombs
+.string "Demo346_0,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; name: Destroying rocks with bombs
 .string "Demo346_1,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Yunobo heads to Death Mountain
 .string "Demo346_3,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Bridge falls to enter Death Mountain
 .string "Demo346_4,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: Sentries come out from Vah Rudania
@@ -179,8 +179,8 @@ data_TableOfCutsceneEventsSettings:
 .string "Demo480_3,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Ice Dragon First Fall Demo
 .string "Demo600_0,FP_ON,PAN_OFF,HND_OFF,CTRL_ON" ; name: Zelda's voice (sky) CASE 1
 .string "Demo600_1,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Zelda's voice (sky) CASE 2
-.string "Demo601_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: Challenge explanation ~ One-Hit Obliterator appears
-.string "Demo601_1,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: One-Hit Obliterator Get
+.string "Demo601_0,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: Challenge explanation ~ One-Hit Obliterator appears
+.string "Demo601_1,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; name: One-Hit Obliterator Get
 .string "Demo602_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: CDungeon Appearance | Used for when the master trial DLC dungeons appear
 .string "Demo602_1,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: CDungeon Appearance (Yiga?)
 .string "Demo603_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; name: Shrine entry prohibition
@@ -266,7 +266,7 @@ data_TableOfCutsceneEventsSettings:
 .string "FindDungeon,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; King Rhoam shows you the two peaks, and gives you the paraglider
 .string "Find_4Relic,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Find_Impa,FP_ON,PAN_OFF,HND_OFF,CTRL_ON" ; Guards and Paya dialogue before finding Impa
-.string "Fire_Relic,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; Kinda 50/50. Its pretty cool I think to fire shots in first-person, but I'm unsure whether its a good method to test things.
+.string "Fire_Relic,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; Kinda 50/50. Its pretty cool I think to fire shots in first-person, but I'm unsure whether its a good method to test things.
 .string "FironeMini_GiantHorse,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; Talking to some quest givers that point towards where you can find this giant horse
 .string "FironeMini_HeartPond,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
 .string "FironeMini_HorseEnemy,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; You're getting asked to get rid of some bokoblins and save a horse, I think
@@ -347,7 +347,7 @@ data_TableOfCutsceneEventsSettings:
 .string "MinakkareMini_Dragonfly,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "MinamihateeluMini_touzoku,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "MiniGame100enemy,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF"
-.string "MiniGame_Bowling,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF"
+.string "MiniGame_Bowling,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "MiniGame_Crosscountry,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF"
 .string "MiniGame_GambleTreasureBox,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
 .string "MiniGame_HillTower_BirdMan,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
@@ -457,7 +457,7 @@ data_TableOfCutsceneEventsSettings:
 .string "Npc_Goron023,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
 .string "Npc_Goron025,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Npc_goron026,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
-.string "Npc_Goron030,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF"
+.string "Npc_Goron030,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
 .string "Npc_Goron031,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Npc_Goron032,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Npc_Goron033,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
@@ -567,7 +567,7 @@ data_TableOfCutsceneEventsSettings:
 .string "Npc_Kakariko016,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Npc_King_Common,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Npc_King_Parasail002,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
-.string "Npc_King_Parasail004,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
+.string "Npc_King_Parasail004,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Npc_King_Parasail005,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
 .string "Npc_King_Vagrant001,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "Npc_King_Vagrant003,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
@@ -898,7 +898,7 @@ data_TableOfCutsceneEventsSettings:
 .string "SandStorm,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "SanrokuMini_Lizard,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "SDemo_A-7,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
-.string "SDemo_B-6,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF"
+.string "SDemo_B-6,FP_ON,PAN_ON,HND_OFF,CTRL_OFF"
 .string "SDemo_B-7,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF"
 .string "SDemo_D-6,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; Zelda telling Link to follow the marker on his map to the first, buried, tower.
 .string "SDemo_F-2,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF"
@@ -1102,7 +1102,7 @@ data_TableOfCutsceneEventsSettings:
 .string "Demo155_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Demo156_0,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; custom | Revalis gift scene
 .string "Demo158_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
-.string "Demo159_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
+.string "Demo159_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom | Urbosas gift
 .string "Demo160_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Demo161_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Demo162_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
@@ -1128,7 +1128,7 @@ data_TableOfCutsceneEventsSettings:
 .string "Demo173_8,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Demo173_9,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Demo174_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
-.string "Demo175_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
+.string "Demo175_0,FP_ON,PAN_OFF,HND_OFF,CTRL_OFF" ; custom
 .string "Demo176_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Demo177_0,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Demo177_1,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
@@ -1507,6 +1507,8 @@ data_TableOfCutsceneEventsSettings:
 .string "Umii10,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "YmdQueTest,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 .string "Z_test_npc02,FP_OFF,PAN_ON,HND_OFF,CTRL_OFF" ; custom
+.string "SeekDungeon_Npc_oasis032_Talk,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; custom
+.string "SeekDungeon_Npc_oasis037_Talk,FP_ON,PAN_ON,HND_OFF,CTRL_OFF" ; custom
 
 
 ; End of table
